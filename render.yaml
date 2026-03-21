@@ -1,10 +1,10 @@
 services:
-  - type: static
+  - type: web
     name: odtech-frontend
     runtime: static
     rootDir: odtech
     buildCommand: npm install && npm run build
-    publishPath: dist
+    staticPublishPath: dist
     envVars:
       - key: VITE_SUPABASE_URL
         fromContext: env
