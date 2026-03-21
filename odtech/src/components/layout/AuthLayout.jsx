@@ -9,7 +9,7 @@ export default function AuthLayout() {
           <Zap size={48} />
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-text-primary tracking-tight">
-          ElectroManager
+          O.D DASHBOARD
         </h2>
       </div>
 

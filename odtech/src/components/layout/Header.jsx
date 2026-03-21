@@ -1,6 +1,7 @@
-import { Bell, Search } from 'lucide-react'
+import { Bell, Search, Menu } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import useNotificationStore from '../../store/useNotificationStore'
+import useSidebarStore from '../../store/useSidebarStore'
 
 const PAGE_TITLES = {
   '/dashboard':       'Dashboard',
@@ -17,14 +18,29 @@ const PAGE_TITLES = {
 export default function Header() {
   const location = useLocation()
   const { unreadCount } = useNotificationStore()
+  const { toggleCollapsed, toggleMobile } = useSidebarStore()
 
   const title = Object.entries(PAGE_TITLES).find(
     ([path]) => location.pathname.startsWith(path)
-  )?.[1] ?? 'ElectroManager'
+  )?.[1] ?? 'O.D DASHBOARD'
 
   return (
     <header className="h-14 bg-surface-card border-b border-surface-border flex items-center justify-between px-6 flex-shrink-0">
-      <h1 className="text-base font-semibold text-text-primary">{title}</h1>
+      <div className="flex items-center gap-4">
+        <button
+          onClick={toggleMobile}
+          className="p-2 rounded-lg hover:bg-surface transition-colors lg:hidden"
+        >
+          <Menu size={20} className="text-text-secondary" />
+        </button>
+        <button
+          onClick={toggleCollapsed}
+          className="p-2 rounded-lg hover:bg-surface transition-colors hidden lg:block"
+        >
+          <Menu size={20} className="text-text-secondary" />
+        </button>
+        <h1 className="text-base font-semibold text-text-primary">{title}</h1>
+      </div>
 
       <div className="flex items-center gap-3">
         {/* Search */}

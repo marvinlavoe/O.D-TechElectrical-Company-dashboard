@@ -13,7 +13,8 @@ export function formatDate(date, fmt = 'short') {
 
 /** Format a number as currency */
 export function formatCurrency(amount, currency = 'GHS') {
-  return new Intl.NumberFormat('en-GH', { style: 'currency', currency }).format(amount ?? 0)
+  // For PDF compatibility, use currency code instead of symbol
+  return `GHS ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount ?? 0)}`
 }
 
 /** Truncate a string to maxLength characters */
