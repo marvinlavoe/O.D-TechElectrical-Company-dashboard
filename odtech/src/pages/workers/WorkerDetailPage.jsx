@@ -207,7 +207,7 @@ export default function WorkerDetailPage() {
         </div>
       </div>
 
-      <Drawer isOpen={editOpen} onClose={() => setEditOpen(false)} title="Edit Worker Profile" width="w-[500px]">
+      <Drawer isOpen={editOpen} onClose={() => setEditOpen(false)} title="Edit Worker Profile" width="w-full md:w-[500px]">
         <WorkerForm
           initial={{
             name: worker.name,

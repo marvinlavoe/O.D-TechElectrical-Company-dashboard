@@ -111,7 +111,7 @@ export default function WorkersPage() {
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title="Add New Worker"
-        width="w-[500px]"
+        width="w-full md:w-[500px]"
       >
         <WorkerForm
           onSubmit={handleAdd}

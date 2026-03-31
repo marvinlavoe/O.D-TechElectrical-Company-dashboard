@@ -13,17 +13,28 @@ const METHODS = [
   { value: 'Credit Card', label: 'Credit Card' },
 ]
 
-export default function ReceiptForm({ onSubmit, onCancel, loading = false }) {
+const empty = {
+  customer_id: '',
+  job_id: '',
+  date: new Date().toISOString().split('T')[0],
+  amount: '',
+  method: 'Mobile Money',
+  notes: 'Payment received for services rendered.'
+}
+
+export default function ReceiptForm({ initial = null, onSubmit, onCancel, loading = false }) {
   const [customers, setCustomers] = useState([])
   const [jobs, setJobs] = useState([])
-  const [form, setForm] = useState({
-    customer_id: '',
-    job_id: '',
-    date: new Date().toISOString().split('T')[0],
-    amount: '',
-    method: 'Mobile Money',
-    notes: 'Payment received for services rendered.'
-  })
+  const [form, setForm] = useState(initial || empty)
+
+  useEffect(() => {
+    if (initial) {
+      setForm(initial)
+    } else {
+      setForm(empty)
+    }
+  }, [initial])
+
 
   useEffect(() => {
     async function fetchCustomers() {
@@ -77,7 +88,7 @@ export default function ReceiptForm({ onSubmit, onCancel, loading = false }) {
           icon={Briefcase}
         />
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             label="Date"
             type="date"
@@ -124,7 +135,7 @@ export default function ReceiptForm({ onSubmit, onCancel, loading = false }) {
           Cancel
         </Button>
         <Button type="submit" className="flex-1" loading={loading}>
-          Generate Receipt
+          {initial ? 'Update Receipt' : 'Generate Receipt'}
         </Button>
       </div>
     </form>

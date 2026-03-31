@@ -338,7 +338,7 @@ export default function CustomerDetailPage() {
         isOpen={editOpen}
         onClose={() => setEditOpen(false)}
         title="Edit Customer"
-        width="w-[520px]"
+        width="w-full md:w-[520px]"
       >
         <CustomerForm
           initial={{

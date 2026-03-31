@@ -181,7 +181,7 @@ export default function InventoryDetailPage() {
         </div>
       </div>
 
-      <Drawer isOpen={editOpen} onClose={() => setEditOpen(false)} title="Edit Inventory Item" width="w-[500px]">
+      <Drawer isOpen={editOpen} onClose={() => setEditOpen(false)} title="Edit Inventory Item" width="w-full md:w-[500px]">
         <InventoryForm
           initial={{
             name: item.name,

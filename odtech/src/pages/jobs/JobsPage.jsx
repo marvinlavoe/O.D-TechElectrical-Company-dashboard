@@ -157,7 +157,7 @@ export default function JobsPage() {
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title="Schedule New Job"
-        width="w-[500px]"
+        width="w-full md:w-[500px]"
       >
         <JobForm
           onSubmit={handleCreate}

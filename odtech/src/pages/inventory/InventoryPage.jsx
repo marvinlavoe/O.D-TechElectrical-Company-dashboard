@@ -103,7 +103,7 @@ export default function InventoryPage() {
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title="Add Inventory Item"
-        width="w-[500px]"
+        width="w-full md:w-[500px]"
       >
         <InventoryForm
           onSubmit={handleAdd}

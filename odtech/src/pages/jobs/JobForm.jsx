@@ -79,7 +79,7 @@ export default function JobForm({ initial = empty, onSubmit, onCancel, loading =
             error={errors.title}
             required
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               label="Customer"
               placeholder="Select Customer"
@@ -106,7 +106,7 @@ export default function JobForm({ initial = empty, onSubmit, onCancel, loading =
           Scheduling
         </p>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               type="date"
               label="Scheduled Date"

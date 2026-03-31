@@ -273,7 +273,7 @@ export default function JobDetailPage() {
         </div>
       </div>
 
-      <Drawer isOpen={editOpen} onClose={() => setEditOpen(false)} title="Edit Job" width="w-[500px]">
+      <Drawer isOpen={editOpen} onClose={() => setEditOpen(false)} title="Edit Job" width="w-full md:w-[500px]">
         <JobForm
           initial={{
             title: job.title,

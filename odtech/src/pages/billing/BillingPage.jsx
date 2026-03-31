@@ -16,6 +16,7 @@ export default function BillingPage() {
   const [quotes, setQuotes] = useState([])
   const [payments, setPayments] = useState([])
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [editingRecord, setEditingRecord] = useState(null)
   const [formType, setFormType] = useState('Invoice') // 'Invoice' | 'Quote'
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -40,8 +41,9 @@ export default function BillingPage() {
     fetchData()
   }, [])
 
-  const handleOpenDrawer = (type) => {
+  const handleOpenDrawer = (type, record = null) => {
     setFormType(type)
+    setEditingRecord(record)
     setDrawerOpen(true)
   }
 
@@ -95,6 +97,61 @@ export default function BillingPage() {
     }
   }
 
+  const handleUpdate = async (form) => {
+    setSaving(true)
+    
+    // 1. Update billing_documents
+    const { error: docError } = await supabase
+      .from('billing_documents')
+      .update({
+        customer_id: form.customer_id,
+        date: form.date,
+        amount: form.amount,
+        status: form.status
+      })
+      .eq('id', editingRecord.id)
+
+    if (docError) {
+      toast.error(docError.message)
+      setSaving(false)
+      return
+    }
+
+    // 2. Update document_items (Delete and Re-insert is simplest since items might have changed)
+    const { error: deleteError } = await supabase
+      .from('document_items')
+      .delete()
+      .eq('document_id', editingRecord.id)
+
+    if (deleteError) {
+      toast.error('Failed to update line items')
+      setSaving(false)
+      return
+    }
+
+    const lineItems = form.items.map(item => ({
+      document_id: editingRecord.id,
+      description: item.description,
+      qty: parseInt(item.qty, 10),
+      price: parseFloat(item.price)
+    }))
+
+    const { error: itemsError } = await supabase
+      .from('document_items')
+      .insert(lineItems)
+
+    setSaving(false)
+
+    if (itemsError) {
+      toast.error('Document updated but failed to save some line items')
+    } else {
+      toast.success(`${formType} updated successfully`)
+      fetchData() // Refresh list
+      setDrawerOpen(false)
+      setEditingRecord(null)
+    }
+  }
+
   const handleGeneratePDF = (row, type) => {
     // pdfGenerator expects { customer, items: [...] }
     const pdfData = {
@@ -121,9 +178,14 @@ export default function BillingPage() {
       }
     },
     { key: 'actions', header: '', render: (_, row) => (
-        <Button variant="ghost" size="sm" onClick={() => handleGeneratePDF(row, row.type)}>
-          <Download size={14} className="mr-1.5" /> PDF
-        </Button>
+        <div className="flex gap-2">
+           <Button variant="ghost" size="sm" onClick={() => handleOpenDrawer(row.type, row)}>
+             <FileText size={14} className="mr-1.5" /> Edit
+           </Button>
+           <Button variant="ghost" size="sm" onClick={() => handleGeneratePDF(row, row.type)}>
+             <Download size={14} className="mr-1.5" /> PDF
+           </Button>
+        </div>
       ) 
     }
   ]
@@ -196,14 +258,24 @@ export default function BillingPage() {
       {/* ─── Drawer ─── */}
       <Drawer
         isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        title={`Create New ${formType}`}
-        width="w-[600px]"
+        onClose={() => {
+          setDrawerOpen(false)
+          setEditingRecord(null)
+        }}
+        title={editingRecord ? `Edit ${formType}` : `Create New ${formType}`}
+        width="w-full md:w-[600px]"
       >
         <InvoiceForm
           type={formType}
-          onSubmit={handleCreate}
-          onCancel={() => setDrawerOpen(false)}
+          initial={editingRecord ? {
+            ...editingRecord,
+            items: editingRecord.document_items || []
+          } : undefined}
+          onSubmit={editingRecord ? handleUpdate : handleCreate}
+          onCancel={() => {
+            setDrawerOpen(false)
+            setEditingRecord(null)
+          }}
           loading={saving}
         />
       </Drawer>

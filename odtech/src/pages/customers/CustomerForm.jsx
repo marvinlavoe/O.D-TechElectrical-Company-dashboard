@@ -78,7 +78,7 @@ export default function CustomerForm({ initial = empty, onSubmit, onCancel, load
             required
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Phone"
               placeholder="+233 20 000 0000"
@@ -129,8 +129,8 @@ export default function CustomerForm({ initial = empty, onSubmit, onCancel, load
         <p className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-4">
           Project Details
         </p>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
             <Select
               label="Project Type"
               options={PROJECT_TYPES}
@@ -141,7 +141,7 @@ export default function CustomerForm({ initial = empty, onSubmit, onCancel, load
               required
             />
           </div>
-          <div className="col-span-2">
+          <div>
             <Select
               label="Payment Status"
               options={PAYMENT_STATUSES}

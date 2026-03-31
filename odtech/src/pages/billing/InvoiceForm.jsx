@@ -23,6 +23,14 @@ const empty = {
 
 export default function InvoiceForm({ type = 'Invoice', initial = empty, onSubmit, onCancel, loading = false }) {
   const [form, setForm] = useState(initial)
+
+  useEffect(() => {
+    setForm({
+      ...initial,
+      items: initial.items?.length > 0 ? initial.items : [{ id: 1, description: '', qty: 1, price: 0 }]
+    })
+  }, [initial])
+
   const [errors, setErrors] = useState({})
   const [customers, setCustomers] = useState([])
 
@@ -181,7 +189,7 @@ export default function InvoiceForm({ type = 'Invoice', initial = empty, onSubmi
           Cancel
         </Button>
         <Button type="submit" className="flex-1" loading={loading}>
-          Save {type}
+          {initial.id ? `Update ${type}` : `Save ${type}`}
         </Button>
       </div>
 

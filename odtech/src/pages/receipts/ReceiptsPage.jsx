@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Download, Printer, Search, ArrowRight } from 'lucide-react'
+import { Plus, Download, Printer, Search, ArrowRight, FileText } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
 import DataTable from '../../components/ui/DataTable'
@@ -14,6 +14,7 @@ export default function ReceiptsPage() {
   const [receipts, setReceipts] = useState([])
   const [loading, setLoading] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [editingRecord, setEditingRecord] = useState(null)
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
 
@@ -37,42 +38,74 @@ export default function ReceiptsPage() {
     fetchReceipts()
   }, [])
 
-  const handleCreate = async (form) => {
+  const handleEdit = (record) => {
+    setEditingRecord(record)
+    setDrawerOpen(true)
+  }
+
+  const handleSubmit = async (form) => {
     setSaving(true)
     
-    // Generate receipt number
-    const count = receipts.length + 1
-    const receiptNum = `REC-${String(count).padStart(3, '0')}-${new Date().getFullYear()}`
+    if (editingRecord) {
+      const { data, error } = await supabase
+        .from('receipts')
+        .update({
+          customer_id: form.customer_id,
+          job_id: form.job_id || null,
+          date: form.date,
+          amount: parseFloat(form.amount || 0),
+          method: form.method,
+          notes: form.notes
+        })
+        .eq('id', editingRecord.id)
+        .select('*, customers(name), jobs(title)')
+        .single()
 
-    const { data, error } = await supabase
-      .from('receipts')
-      .insert([{
-        receipt_number: receiptNum,
-        customer_id: form.customer_id,
-        job_id: form.job_id || null,
-        date: form.date,
-        amount: parseFloat(form.amount),
-        method: form.method,
-        notes: form.notes
-      }])
-      .select('*, customers(name), jobs(title)')
-      .single()
+      setSaving(false)
 
-    setSaving(false)
-
-    if (error) {
-      toast.error(error.message)
+      if (error) {
+        toast.error(error.message)
+      } else {
+        toast.success('Receipt updated successfully')
+        setReceipts(prev => prev.map(r => r.id === editingRecord.id ? data : r))
+        setDrawerOpen(false)
+        setEditingRecord(null)
+      }
     } else {
-      toast.success('Receipt generated successfully')
-      setReceipts(prev => [data, ...prev])
-      setDrawerOpen(false)
-      
-      // Auto-generate PDF for convenience
-      generateReceiptPDF({ 
-        ...data, 
-        customer: data.customers?.name,
-        job_title: data.jobs?.title
-      })
+      // Generate receipt number
+      const count = receipts.length + 1
+      const receiptNum = `REC-${String(count).padStart(3, '0')}-${new Date().getFullYear()}`
+
+      const { data, error } = await supabase
+        .from('receipts')
+        .insert([{
+          receipt_number: receiptNum,
+          customer_id: form.customer_id,
+          job_id: form.job_id || null,
+          date: form.date,
+          amount: parseFloat(form.amount || 0),
+          method: form.method,
+          notes: form.notes
+        }])
+        .select('*, customers(name), jobs(title)')
+        .single()
+
+      setSaving(false)
+
+      if (error) {
+        toast.error(error.message)
+      } else {
+        toast.success('Receipt generated successfully')
+        setReceipts(prev => [data, ...prev])
+        setDrawerOpen(false)
+        
+        // Auto-generate PDF for convenience
+        generateReceiptPDF({ 
+          ...data, 
+          customer: data.customers?.name,
+          job_title: data.jobs?.title
+        })
+      }
     }
   }
 
@@ -106,6 +139,9 @@ export default function ReceiptsPage() {
     )},
     { key: 'actions', header: '', render: (_, row) => (
       <div className="flex gap-2">
+        <Button variant="ghost" size="xs" onClick={() => handleEdit(row)}>
+          <FileText size={13} className="mr-1.5" /> Edit
+        </Button>
         <Button variant="ghost" size="xs" onClick={() => handleDownload(row)}>
           <Download size={13} className="mr-1.5" /> PDF
         </Button>
@@ -165,13 +201,20 @@ export default function ReceiptsPage() {
 
       <Drawer
         isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        title="Create Payment Receipt"
-        width="w-[500px]"
+        onClose={() => {
+          setDrawerOpen(false)
+          setEditingRecord(null)
+        }}
+        title={editingRecord ? 'Edit Payment Receipt' : 'Create Payment Receipt'}
+        width="w-full md:w-[500px]"
       >
         <ReceiptForm
-          onSubmit={handleCreate}
-          onCancel={() => setDrawerOpen(false)}
+          initial={editingRecord}
+          onSubmit={handleSubmit}
+          onCancel={() => {
+            setDrawerOpen(false)
+            setEditingRecord(null)
+          }}
           loading={saving}
         />
       </Drawer>

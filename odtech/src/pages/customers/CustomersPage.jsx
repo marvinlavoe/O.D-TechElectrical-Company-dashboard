@@ -190,7 +190,7 @@ export default function CustomersPage() {
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title="Add New Customer"
-        width="w-[520px]"
+        width="w-full md:w-[520px]"
       >
         <CustomerForm
           onSubmit={handleAdd}
