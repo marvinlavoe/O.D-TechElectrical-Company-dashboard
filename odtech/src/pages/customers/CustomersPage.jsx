@@ -90,16 +90,6 @@ export default function CustomersPage() {
     setSaving(true);
 
     try {
-      // Ensure we have a valid session before proceeding
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        toast.error("Authentication error. Please sign in again.");
-        return;
-      }
-
       // Map the form state to match our Supabase schema
       const newCustomer = {
         name: form.full_name,
