@@ -207,6 +207,7 @@ export default function ChatPage() {
   const { session, profile } = useAuthStore();
   const currentUser = session?.user || null;
   const currentUserId = currentUser?.id || null;
+  const currentUserEmail = currentUser?.email || "";
 
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
@@ -224,9 +225,6 @@ export default function ChatPage() {
 
   const endRef = useRef(null);
 
-  const profilesById = Object.fromEntries(
-    profiles.map((entry) => [entry.id, entry]),
-  );
   const allChannels = [...teamChannels, ...jobChannels, ...dmChannels];
   const selectedChannel =
     allChannels.find((channel) => channel.id === selectedChannelId) || null;
@@ -315,6 +313,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (!selectedChannelId || !currentUserId) {
       setMessages([]);
+      setMessagesLoading(false);
       return;
     }
 
@@ -322,6 +321,9 @@ export default function ChatPage() {
 
     async function loadMessages() {
       setMessagesLoading(true);
+      const profilesById = Object.fromEntries(
+        profiles.map((entry) => [entry.id, entry]),
+      );
 
       try {
         const { data, error } = await supabase
@@ -335,7 +337,7 @@ export default function ChatPage() {
 
         setMessages(
           (data || []).map((message) =>
-            mapMessageWithProfiles(message, profilesById, currentUser),
+            mapMessageWithProfiles(message, profilesById, { email: currentUserEmail }),
           ),
         );
       } catch (error) {
@@ -353,10 +355,14 @@ export default function ChatPage() {
     return () => {
       ignore = true;
     };
-  }, [selectedChannelId, currentUserId, currentUser, profilesById]);
+  }, [selectedChannelId, currentUserId, currentUserEmail, profiles]);
 
   useEffect(() => {
-    if (!selectedChannelId || !currentUser) return undefined;
+    if (!selectedChannelId || !currentUserId) return undefined;
+
+    const profilesById = Object.fromEntries(
+      profiles.map((entry) => [entry.id, entry]),
+    );
 
     const subscription = supabase
       .channel(`messages:${selectedChannelId}`)
@@ -372,7 +378,7 @@ export default function ChatPage() {
           const nextMessage = mapMessageWithProfiles(
             payload.new,
             profilesById,
-            currentUser,
+            { email: currentUserEmail },
           );
 
           setMessages((previous) => appendUniqueMessage(previous, nextMessage));
@@ -383,7 +389,7 @@ export default function ChatPage() {
     return () => {
       supabase.removeChannel(subscription);
     };
-  }, [selectedChannelId, currentUser, profilesById]);
+  }, [selectedChannelId, currentUserEmail, currentUserId, profiles]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -396,6 +402,9 @@ export default function ChatPage() {
     if (!content || !selectedChannelId || !currentUserId || sending) return;
 
     setSending(true);
+    const profilesById = Object.fromEntries(
+      profiles.map((entry) => [entry.id, entry]),
+    );
 
     try {
       const { data, error } = await supabase
@@ -417,7 +426,7 @@ export default function ChatPage() {
       setMessages((previous) =>
         appendUniqueMessage(
           previous,
-          mapMessageWithProfiles(data, profilesById, currentUser),
+          mapMessageWithProfiles(data, profilesById, { email: currentUserEmail }),
         ),
       );
     } catch (error) {
