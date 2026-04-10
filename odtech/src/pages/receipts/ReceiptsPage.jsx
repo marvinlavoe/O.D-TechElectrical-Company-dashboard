@@ -9,8 +9,10 @@ import Drawer from '../../components/ui/Drawer'
 import ReceiptForm from './ReceiptForm'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import { generateReceiptPDF } from '../../lib/pdfGenerator'
+import useAuthStore from '../../store/useAuthStore'
 
 export default function ReceiptsPage() {
+  const { profile, session } = useAuthStore()
   const [receipts, setReceipts] = useState([])
   const [loading, setLoading] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -18,8 +20,10 @@ export default function ReceiptsPage() {
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
 
-  const fetchReceipts = async () => {
-    setLoading(true)
+  const fetchReceipts = async ({ showLoader = true } = {}) => {
+    if (showLoader) {
+      setLoading(true)
+    }
     const { data, error } = await supabase
       .from('receipts')
       .select('*, customers(name), jobs(title)')
@@ -31,11 +35,15 @@ export default function ReceiptsPage() {
     } else {
       setReceipts(data || [])
     }
-    setLoading(false)
+    if (showLoader) {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
-    fetchReceipts()
+    queueMicrotask(() => {
+      fetchReceipts({ showLoader: false })
+    })
   }, [])
 
   const handleEdit = (record) => {
@@ -103,7 +111,8 @@ export default function ReceiptsPage() {
         generateReceiptPDF({ 
           ...data, 
           customer: data.customers?.name,
-          job_title: data.jobs?.title
+          job_title: data.jobs?.title,
+          generated_by: profile?.full_name || session?.user?.email || 'Account user'
         })
       }
     }
@@ -113,7 +122,8 @@ export default function ReceiptsPage() {
     generateReceiptPDF({
       ...row,
       customer: row.customers?.name,
-      job_title: row.jobs?.title
+      job_title: row.jobs?.title,
+      generated_by: profile?.full_name || session?.user?.email || 'Account user'
     })
   }
 

@@ -14,6 +14,7 @@ import Drawer from '../../components/ui/Drawer'
 import CustomerForm from './CustomerForm'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import { generateReceiptPDF } from '../../lib/pdfGenerator'
+import useAuthStore from '../../store/useAuthStore'
 
 const STATUS_COLOR  = { Active: 'success', Inactive: 'danger', paid: 'success', partial: 'warning', unpaid: 'danger' }
 const STATUS_LABEL  = { Active: 'Active', Inactive: 'Inactive', paid: 'Paid', partial: 'Partial', unpaid: 'Unpaid' }
@@ -47,6 +48,7 @@ function SectionCard({ title, action, children }) {
 }
 
 export default function CustomerDetailPage() {
+  const { profile, session } = useAuthStore()
   const { id } = useParams()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
@@ -318,7 +320,17 @@ export default function CustomerDetailPage() {
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <span className="text-sm font-bold text-success">{formatCurrency(rec.amount)}</span>
-                      <Button variant="ghost" size="xs" onClick={() => generateReceiptPDF({ ...rec, customer: customer.name })}>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() =>
+                          generateReceiptPDF({
+                            ...rec,
+                            customer: customer.name,
+                            generated_by: profile?.full_name || session?.user?.email || 'Account user'
+                          })
+                        }
+                      >
                         <Download size={13} />
                       </Button>
                     </div>
