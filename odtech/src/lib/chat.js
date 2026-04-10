@@ -3,8 +3,14 @@ export function getChatUserLabel(profile = null, fallback = "Unknown user") {
 }
 
 export function buildJobChannelName(job = {}) {
-  const customerName = job.customers?.name ? ` - ${job.customers.name}` : "";
-  return `Job #${job.id}${customerName}`;
+  const jobTitle = job.title?.trim() || "Untitled job";
+  const customerName = job.customers?.name?.trim();
+
+  if (customerName) {
+    return `${jobTitle} - ${customerName}`;
+  }
+
+  return jobTitle;
 }
 
 export function buildDirectMessageName(profile = null) {
