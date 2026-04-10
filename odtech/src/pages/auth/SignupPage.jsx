@@ -55,7 +55,8 @@ export default function SignupPage() {
       const user = data.user;
 
       // 2. Try to get session
-      const session = data.session ?? (await supabase.auth.getSession()).data.session;
+      const session =
+        data.session ?? (await supabase.auth.getSession()).data.session;
 
       if (!session) {
         toast.success("Check your email to confirm your account.");

@@ -94,25 +94,25 @@ export default function Sidebar() {
 
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
           {visible.map((item) => {
-            const ItemIcon = item.icon
+            const ItemIcon = item.icon;
 
             return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={closeMobile}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-text-secondary hover:bg-surface-hover hover:text-text-primary"
-                }`
-              }
-            >
-              <ItemIcon size={17} />
-              {!isCollapsed && <span>{item.label}</span>}
-            </NavLink>
-            )
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={closeMobile}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+                  }`
+                }
+              >
+                <ItemIcon size={17} />
+                {!isCollapsed && <span>{item.label}</span>}
+              </NavLink>
+            );
           })}
         </nav>
 

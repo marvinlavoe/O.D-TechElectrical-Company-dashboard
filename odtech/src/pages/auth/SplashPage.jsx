@@ -27,7 +27,9 @@ export default function SplashPage() {
       <h1 className="text-4xl font-bold text-text-primary tracking-tight">
         O.D DASHBOARD
       </h1>
-      <p className="text-text-secondary mt-2 text-lg">Electrical Engineering Solutions</p>
+      <p className="text-text-secondary mt-2 text-lg">
+        Electrical Engineering Solutions
+      </p>
     </div>
   );
 }

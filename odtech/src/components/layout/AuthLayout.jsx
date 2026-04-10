@@ -1,13 +1,13 @@
-import { Navigate, Outlet } from 'react-router-dom'
-import { Zap } from 'lucide-react'
-import useAuthStore from '../../store/useAuthStore'
-import { getDefaultRoute } from '../../lib/authRoutes'
+import { Navigate, Outlet } from "react-router-dom";
+import { Zap } from "lucide-react";
+import useAuthStore from "../../store/useAuthStore";
+import { getDefaultRoute } from "../../lib/authRoutes";
 
 export default function AuthLayout() {
-  const { loading, session, profile } = useAuthStore()
+  const { loading, session, profile } = useAuthStore();
 
   if (!loading && session) {
-    return <Navigate to={getDefaultRoute(profile, session.user)} replace />
+    return <Navigate to={getDefaultRoute(profile, session.user)} replace />;
   }
 
   return (
@@ -27,5 +27,5 @@ export default function AuthLayout() {
         </div>
       </div>
     </div>
-  )
+  );
 }
