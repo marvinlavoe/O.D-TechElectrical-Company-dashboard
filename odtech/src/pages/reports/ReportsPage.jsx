@@ -17,7 +17,6 @@ export default function ReportsPage() {
   // Report data states
   const [stats, setStats] = useState({
     totalRevenue: 0,
-    pendingRevenue: 0,
     totalJobs: 0,
     totalCustomers: 0,
     totalInventory: 0
@@ -53,24 +52,15 @@ export default function ReportsPage() {
 
   const fetchStats = async () => {
     try {
-      // Total revenue (from receipts)
-      const { data: receiptsData, error: receiptsError } = await supabase
-        .from('receipts')
-        .select('amount')
+      // Total revenue (from jobs with payment_status = 'paid')
+      const { data: revenueData, error: revenueError } = await supabase
+        .from('jobs')
+        .select('total_cost')
+        .eq('payment_status', 'paid')
 
-      if (receiptsError) throw receiptsError
+      if (revenueError) throw revenueError
 
-      const totalRevenue = receiptsData?.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0) || 0
-
-      // Pending revenue (from billing_documents where not paid)
-      const { data: pendingData, error: pendingError } = await supabase
-        .from('billing_documents')
-        .select('amount')
-        .not('status', 'eq', 'Paid')
-
-      if (pendingError) throw pendingError
-
-      const pendingRevenue = pendingData?.reduce((sum, doc) => sum + (parseFloat(doc.amount) || 0), 0) || 0
+      const totalRevenue = revenueData?.reduce((sum, job) => sum + (job.total_cost || 0), 0) || 0
 
       // Total jobs
       const { count: totalJobs, error: jobsError } = await supabase
@@ -95,7 +85,6 @@ export default function ReportsPage() {
 
       setStats({
         totalRevenue,
-        pendingRevenue,
         totalJobs: totalJobs || 0,
         totalCustomers: totalCustomers || 0,
         totalInventory: totalInventory || 0
@@ -107,20 +96,20 @@ export default function ReportsPage() {
 
   const fetchRevenueData = async (startDate, endDate) => {
     try {
-      // Revenue over time (from receipts)
       const { data, error } = await supabase
-        .from('receipts')
-        .select('date, amount')
-        .gte('date', dateRange.start)
-        .lte('date', dateRange.end)
-        .order('date')
+        .from('jobs')
+        .select('created_at, total_cost')
+        .eq('payment_status', 'paid')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate)
+        .order('created_at')
 
       if (error) throw error
 
       // Group by date
-      const grouped = data?.reduce((acc, r) => {
-        const date = r.date
-        acc[date] = (acc[date] || 0) + (parseFloat(r.amount) || 0)
+      const grouped = data?.reduce((acc, job) => {
+        const date = new Date(job.created_at).toISOString().split('T')[0]
+        acc[date] = (acc[date] || 0) + (job.total_cost || 0)
         return acc
       }, {}) || {}
 
@@ -189,8 +178,8 @@ export default function ReportsPage() {
     try {
       const { data, error } = await supabase
         .from('inventory')
-        .select('category, qty')
-        .order('qty', { ascending: false })
+        .select('category, quantity')
+        .order('quantity', { ascending: false })
         .limit(10)
 
       if (error) throw error
@@ -264,19 +253,12 @@ export default function ReportsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Revenue (Cash)"
+          title="Total Revenue"
           value={`$${stats.totalRevenue.toLocaleString()}`}
           icon={TrendingUp}
           color="success"
-          loading={loading}
-        />
-        <StatCard
-          title="Pending Rev."
-          value={`$${stats.pendingRevenue.toLocaleString()}`}
-          icon={FileText}
-          color="warning"
           loading={loading}
         />
         <StatCard
@@ -287,14 +269,14 @@ export default function ReportsPage() {
           loading={loading}
         />
         <StatCard
-          title="Customers"
+          title="Total Customers"
           value={stats.totalCustomers.toLocaleString()}
           icon={Users}
           color="warning"
           loading={loading}
         />
         <StatCard
-          title="Inventory"
+          title="Inventory Items"
           value={stats.totalInventory.toLocaleString()}
           icon={Package}
           color="info"
@@ -429,7 +411,7 @@ export default function ReportsPage() {
                 {inventoryUsage.map((item, index) => (
                   <tr key={index} className="border-b border-surface-border/50">
                     <td className="py-2 px-4 text-sm text-text-primary">{item.category || 'Uncategorized'}</td>
-                    <td className="py-2 px-4 text-sm text-text-primary text-right">{item.qty}</td>
+                    <td className="py-2 px-4 text-sm text-text-primary text-right">{item.quantity}</td>
                   </tr>
                 ))}
               </tbody>

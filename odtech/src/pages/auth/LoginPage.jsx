@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase";
 import toast from "react-hot-toast";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
+import { getDefaultRoute, getUserRole } from "../../lib/authRoutes";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -74,13 +75,13 @@ export default function LoginPage() {
       }
 
       const user = data.user;
-      let role = "worker";
+      let profile = null;
 
       // Try fetch profile safely
       try {
-        const { data: profile, error: profileError } = await supabase
+        const { data: existingProfile, error: profileError } = await supabase
           .from("profiles")
-          .select("role")
+          .select("id, full_name, email, role")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -88,25 +89,31 @@ export default function LoginPage() {
           console.warn("Profile fetch error:", profileError);
         }
 
-        if (profile?.role) {
-          role = profile.role;
+        if (existingProfile) {
+          profile = existingProfile;
         } else {
+          const fallbackProfile = {
+            id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name || user.email,
+            role: getUserRole(null, user),
+          };
+
           const { error: upsertError } = await supabase
             .from("profiles")
-            .upsert({
-              id: user.id,
-              email: user.email,
-              role: "worker",
-            });
+            .upsert(fallbackProfile);
+
           if (upsertError) {
             console.warn("Profile upsert error:", upsertError);
+          } else {
+            profile = fallbackProfile;
           }
         }
       } catch (profileErr) {
         console.warn("Profile handling failed:", profileErr);
       }
 
-      navigate(role === "admin" ? "/dashboard" : "/dashboard/worker");
+      navigate(getDefaultRoute(profile, user), { replace: true });
     } catch (err) {
       console.error("Login error:", err);
       toast.error(err.message || "Login failed.");

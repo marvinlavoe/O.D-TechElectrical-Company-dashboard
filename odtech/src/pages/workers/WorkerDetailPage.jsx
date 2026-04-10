@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   ArrowLeft, Phone, Mail, MapPin, Award,
@@ -11,7 +11,8 @@ import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Drawer from '../../components/ui/Drawer'
 import WorkerForm from './WorkerForm'
-import { truncate, formatDate } from '../../lib/utils'
+import { formatDate } from '../../lib/utils'
+import { jobHasAssignedTechnician } from '../../lib/jobAssignments'
 
 function SectionCard({ title, action, children }) {
   return (
@@ -25,7 +26,9 @@ function SectionCard({ title, action, children }) {
   )
 }
 
-function InfoRow({ icon: Icon, label, value }) {
+function InfoRow({ icon, label, value }) {
+  const Icon = icon
+
   return (
     <div className="flex items-center gap-3">
       <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center flex-shrink-0">
@@ -47,7 +50,7 @@ export default function WorkerDetailPage() {
   const [currentJobs, setCurrentJobs] = useState([])
   const [history, setHistory] = useState([])
 
-  const fetchWorkerData = async () => {
+  const fetchWorkerData = useCallback(async () => {
     setLoading(true)
     try {
       // Fetch worker
@@ -64,12 +67,12 @@ export default function WorkerDetailPage() {
       const { data: jobsData } = await supabase
         .from('jobs')
         .select('*')
-        .eq('technician_id', id)
         .order('created_at', { ascending: false })
       
       if (jobsData) {
-        setCurrentJobs(jobsData.filter(j => j.status !== 'Completed'))
-        setHistory(jobsData.filter(j => j.status === 'Completed'))
+        const assignedJobs = jobsData.filter((job) => jobHasAssignedTechnician(job, id))
+        setCurrentJobs(assignedJobs.filter(j => j.status !== 'Completed'))
+        setHistory(assignedJobs.filter(j => j.status === 'Completed'))
       }
 
     } catch (err) {
@@ -78,11 +81,11 @@ export default function WorkerDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
 
   useEffect(() => {
     fetchWorkerData()
-  }, [id])
+  }, [fetchWorkerData])
 
   const handleEdit = async (form) => {
     const { error } = await supabase

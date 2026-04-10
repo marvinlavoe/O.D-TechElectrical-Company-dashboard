@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import FullCalendar from '@fullcalendar/react'
@@ -13,6 +13,11 @@ import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import Drawer from '../../components/ui/Drawer'
 import JobForm from './JobForm'
+import {
+  buildJobAssignmentPayload,
+  createWorkerLookup,
+  formatAssignedTechnicians,
+} from '../../lib/jobAssignments'
 
 export default function JobsPage() {
   const navigate = useNavigate()
@@ -21,36 +26,52 @@ export default function JobsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [workersById, setWorkersById] = useState({})
 
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('jobs')
-      .select('*, customers(name), workers(name)')
-      .order('created_at', { ascending: false })
+    const [
+      { data, error },
+      { data: workersData, error: workersError }
+    ] = await Promise.all([
+      supabase
+        .from('jobs')
+        .select('*, customers(name), workers(name)')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('workers')
+        .select('id, name')
+        .order('name')
+    ])
 
-    if (error) {
+    if (error || workersError) {
       toast.error('Failed to load jobs')
-      console.error(error)
+      console.error(error || workersError)
     } else {
       setJobs(data || [])
+      setWorkersById(createWorkerLookup(workersData || []))
     }
     setLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
-    fetchJobs()
-  }, [])
+    const timer = setTimeout(() => {
+      fetchJobs()
+    }, 0)
+
+    return () => clearTimeout(timer)
+  }, [fetchJobs])
 
   const handleCreate = async (form) => {
     setSaving(true)
+    const assignmentPayload = buildJobAssignmentPayload(form)
     
     const { data, error } = await supabase
       .from('jobs')
       .insert([{
         title: form.title,
         customer_id: form.customer_id,
-        technician_id: form.technician_id || null,
+        ...assignmentPayload,
         scheduled_date: form.scheduled_date,
         scheduled_time: form.scheduled_time,
         priority: form.priority,
@@ -74,7 +95,11 @@ export default function JobsPage() {
   const columns = [
     { key: 'title', header: 'Title' },
     { key: 'customers', header: 'Customer', render: (val) => val?.name || 'Walk-in' },
-    { key: 'workers', header: 'Technician', render: (val) => val?.name || 'Unassigned' },
+    {
+      key: 'technicians',
+      header: 'Technicians',
+      render: (_, row) => formatAssignedTechnicians(row, workersById)
+    },
     { key: 'scheduled_date', header: 'Date & Time', render: (_, row) => `${row.scheduled_date} ${row.scheduled_time}` },
     {
       key: 'priority',

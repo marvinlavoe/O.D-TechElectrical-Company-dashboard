@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import toast from "react-hot-toast";
@@ -8,6 +8,7 @@ import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import Drawer from "../../components/ui/Drawer";
 import CustomerForm from "./CustomerForm";
+import { buildCustomerInsertPayload } from "../../lib/customerPayloads";
 
 const STATUS_COLOR = {
   paid: "success",
@@ -90,15 +91,7 @@ export default function CustomersPage() {
     setSaving(true);
 
     try {
-      // Map the form state to match our Supabase schema
-      const newCustomer = {
-        name: form.full_name,
-        email: form.email || null,
-        phone: form.phone,
-        address: form.address + (form.city ? `, ${form.city}` : ""),
-        type: form.project_type,
-        status: form.payment_status === "unpaid" ? "Inactive" : "Active",
-      };
+      const newCustomer = buildCustomerInsertPayload(form);
 
       const { data, error } = await supabase
         .from("customers")

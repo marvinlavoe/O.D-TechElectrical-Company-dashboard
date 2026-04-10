@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
+import { getDefaultRoute } from "../../lib/authRoutes";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -33,6 +34,12 @@ export default function SignupPage() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: fullName,
+            role,
+          },
+        },
       });
 
       if (error) {
@@ -48,9 +55,9 @@ export default function SignupPage() {
       const user = data.user;
 
       // 2. Try to get session
-      const { data: sessionData } = await supabase.auth.getSession();
+      const session = data.session ?? (await supabase.auth.getSession()).data.session;
 
-      if (!sessionData.session) {
+      if (!session) {
         toast.success("Check your email to confirm your account.");
         navigate("/login");
         setLoading(false);
@@ -73,7 +80,7 @@ export default function SignupPage() {
       }
 
       toast.success("Account created successfully!");
-      navigate("/login");
+      navigate(getDefaultRoute({ role }, user), { replace: true });
     } catch (err) {
       console.error("Signup exception:", err);
       toast.error("Something went wrong.");

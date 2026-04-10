@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Briefcase, CheckCircle, Clock, Calendar, MapPin, ChevronRight } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import StatCard from '../../components/ui/StatCard'
 import Badge from '../../components/ui/Badge'
-import { formatDate } from '../../lib/utils'
+import { jobHasAssignedTechnician } from '../../lib/jobAssignments'
 
 export default function WorkerDashboard() {
   const [loading, setLoading] = useState(true)
@@ -23,36 +23,26 @@ export default function WorkerDashboard() {
       const today = new Date().toISOString().split('T')[0]
       
       try {
-        // 1. Fetch Assigned Today
-        const { data: assignedToday } = await supabase
-          .from('jobs')
-          .select('*')
-          .eq('technician_id', MOCK_WORKER_ID)
-          .eq('scheduled_date', today)
-        
-        // 2. Fetch Completed this week
-        const lastWeek = new Date()
-        lastWeek.setDate(lastWeek.getDate() - 7)
-        const { count: completedCount } = await supabase
-          .from('jobs')
-          .select('*', { count: 'exact', head: true })
-          .eq('technician_id', MOCK_WORKER_ID)
-          .eq('status', 'Completed')
-          .gte('created_at', lastWeek.toISOString())
-
-        // 3. Fetch Full Schedule (upcoming)
-        const { data: schedule } = await supabase
+        const { data: jobs } = await supabase
           .from('jobs')
           .select('*, customers(name)')
-          .eq('technician_id', MOCK_WORKER_ID)
-          .neq('status', 'Completed')
           .order('scheduled_date', { ascending: true })
-          .limit(10)
+
+        const assignedJobs = (jobs || []).filter((job) => jobHasAssignedTechnician(job, MOCK_WORKER_ID))
+        const lastWeek = new Date()
+        lastWeek.setDate(lastWeek.getDate() - 7)
+        const assignedToday = assignedJobs.filter((job) => job.scheduled_date === today)
+        const completedCount = assignedJobs.filter((job) =>
+          job.status === 'Completed' && new Date(job.created_at) >= lastWeek
+        ).length
+        const schedule = assignedJobs
+          .filter((job) => job.status !== 'Completed')
+          .slice(0, 10)
 
         setStats({
-          assignedToday: assignedToday?.length || 0,
+          assignedToday: assignedToday.length,
           completedWeek: completedCount || 0,
-          schedule: schedule || []
+          schedule
         })
       } catch (err) {
         console.error(err)

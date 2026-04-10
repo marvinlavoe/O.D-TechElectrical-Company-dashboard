@@ -1,7 +1,15 @@
-import { Outlet } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { Zap } from 'lucide-react'
+import useAuthStore from '../../store/useAuthStore'
+import { getDefaultRoute } from '../../lib/authRoutes'
 
 export default function AuthLayout() {
+  const { loading, session, profile } = useAuthStore()
+
+  if (!loading && session) {
+    return <Navigate to={getDefaultRoute(profile, session.user)} replace />
+  }
+
   return (
     <div className="min-h-screen bg-surface flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">

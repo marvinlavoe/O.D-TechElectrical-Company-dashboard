@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   ArrowLeft, Calendar, Clock, MapPin, User,
@@ -12,6 +12,12 @@ import Button from '../../components/ui/Button'
 import Drawer from '../../components/ui/Drawer'
 import JobForm from './JobForm'
 import { formatDate } from '../../lib/utils'
+import {
+  buildJobAssignmentPayload,
+  createWorkerLookup,
+  formatAssignedTechnicians,
+  getAssignedTechnicianIds,
+} from '../../lib/jobAssignments'
 
 const STATUS_COLOR = {
   Pending: 'warning',
@@ -21,7 +27,19 @@ const STATUS_COLOR = {
 }
 const PRIORITY_COLOR = { High: 'danger', Medium: 'warning', Low: 'success' }
 
-function InfoRow({ icon: Icon, label, value }) {
+function getGoogleMapsDirectionsUrl(location = '') {
+  if (!location.trim()) return ''
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(location)}`
+}
+
+function getGoogleMapsEmbedUrl(location = '') {
+  if (!location.trim()) return ''
+  return `https://www.google.com/maps?q=${encodeURIComponent(location)}&z=15&output=embed`
+}
+
+function InfoRow({ icon, label, value }) {
+  const Icon = icon
+
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-1.5 text-text-muted mb-0.5">
@@ -51,19 +69,31 @@ export default function JobDetailPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [job, setJob] = useState(null)
   const [tasks, setTasks] = useState([])
+  const [workersById, setWorkersById] = useState({})
 
-  const fetchJobData = async () => {
+  const fetchJobData = useCallback(async () => {
     setLoading(true)
     try {
       // Fetch job with relations
-      const { data: jobData, error: jobError } = await supabase
-        .from('jobs')
-        .select('*, customers(name), workers(name)')
-        .eq('id', id)
-        .single()
+      const [
+        { data: jobData, error: jobError },
+        { data: workersData, error: workersError }
+      ] = await Promise.all([
+        supabase
+          .from('jobs')
+          .select('*, customers(name), workers(name)')
+          .eq('id', id)
+          .single(),
+        supabase
+          .from('workers')
+          .select('id, name')
+          .order('name')
+      ])
       
       if (jobError) throw jobError
+      if (workersError) throw workersError
       setJob(jobData)
+      setWorkersById(createWorkerLookup(workersData || []))
 
       // Fetch tasks / checklist
       const { data: tasksData } = await supabase
@@ -79,19 +109,21 @@ export default function JobDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
 
   useEffect(() => {
     fetchJobData()
-  }, [id])
+  }, [fetchJobData])
 
   const handleEdit = async (form) => {
+    const assignmentPayload = buildJobAssignmentPayload(form)
+
     const { error } = await supabase
       .from('jobs')
       .update({
         title: form.title,
         customer_id: form.customer_id,
-        technician_id: form.technician_id,
+        ...assignmentPayload,
         scheduled_date: form.scheduled_date,
         scheduled_time: form.scheduled_time,
         priority: form.priority,
@@ -142,6 +174,9 @@ export default function JobDetailPage() {
   const tasksDone = tasks.filter(t => t.is_completed).length
   const tasksTotal = tasks.length
   const progressPercent = tasksTotal === 0 ? 0 : Math.round((tasksDone / tasksTotal) * 100)
+  const assignedTechnicians = formatAssignedTechnicians(job, workersById)
+  const googleMapsDirectionsUrl = getGoogleMapsDirectionsUrl(job.location)
+  const googleMapsEmbedUrl = getGoogleMapsEmbedUrl(job.location)
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -190,7 +225,7 @@ export default function JobDetailPage() {
             <div className="space-y-5">
               <InfoRow icon={Calendar} label="Date" value={formatDate(job.scheduled_date)} />
               <InfoRow icon={Clock} label="Time" value={job.scheduled_time} />
-              <InfoRow icon={User} label="Technician" value={job.workers?.name || 'Not assigned'} />
+              <InfoRow icon={User} label="Technicians" value={assignedTechnicians} />
               
               <div className="pt-2">
                 <div className="flex items-center gap-1.5 text-text-muted mb-0.5">
@@ -199,10 +234,28 @@ export default function JobDetailPage() {
                 </div>
                 <div className="ml-5 bg-surface rounded-lg p-3 text-sm text-text-primary mt-1 border border-surface-border">
                   {job.location || 'No location set'}
-                  <div className="mt-2 text-primary font-medium flex items-center gap-1 text-xs cursor-pointer hover:underline">
-                    <Navigation size={12} /> Get Directions
-                  </div>
+                  {googleMapsDirectionsUrl && (
+                    <a
+                      href={googleMapsDirectionsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex text-primary font-medium items-center gap-1 text-xs hover:underline"
+                    >
+                      <Navigation size={12} /> Get Directions
+                    </a>
+                  )}
                 </div>
+                {googleMapsEmbedUrl && (
+                  <div className="ml-5 mt-3 overflow-hidden rounded-xl border border-surface-border bg-surface">
+                    <iframe
+                      title={`Map for ${job.title}`}
+                      src={googleMapsEmbedUrl}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      className="h-64 w-full border-0"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </SectionCard>
@@ -278,6 +331,7 @@ export default function JobDetailPage() {
           initial={{
             title: job.title,
             customer_id: job.customer_id,
+            technician_ids: getAssignedTechnicianIds(job),
             technician_id: job.technician_id,
             scheduled_date: job.scheduled_date,
             scheduled_time: job.scheduled_time,
