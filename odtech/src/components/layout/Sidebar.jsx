@@ -17,14 +17,14 @@ import {
 import useAuthStore from "../../store/useAuthStore";
 import useSidebarStore from "../../store/useSidebarStore";
 import Avatar from "../ui/Avatar";
-import { getUserRole } from "../../lib/authRoutes";
+import { getDefaultRoute, getUserRole } from "../../lib/authRoutes";
 
 const NAV_ITEMS = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", dynamicDashboard: true },
   { to: "/customers", icon: Users, label: "Customers" },
   { to: "/jobs", icon: Briefcase, label: "Jobs" },
   { to: "/workers", icon: HardHat, label: "Workers", adminOnly: true },
-  { to: "/inventory", icon: Package, label: "Inventory" },
+  { to: "/inventory", icon: Package, label: "Inventory", adminOnly: true },
   { to: "/sales", icon: ShoppingCart, label: "Sales", adminOnly: true },
   { to: "/billing", icon: CreditCard, label: "Billing", adminOnly: true },
   { to: "/receipts", icon: FileText, label: "Receipts", adminOnly: true },
@@ -40,13 +40,19 @@ export default function Sidebar() {
 
   const role = getUserRole(profile, session?.user);
   const isAdmin = role === "admin";
+  const dashboardRoute = getDefaultRoute(profile, session?.user);
 
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
 
-  const visible = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+  const visible = NAV_ITEMS
+    .filter((item) => !item.adminOnly || isAdmin)
+    .map((item) => ({
+      ...item,
+      to: item.dynamicDashboard ? dashboardRoute : item.to,
+    }));
 
   return (
     <>

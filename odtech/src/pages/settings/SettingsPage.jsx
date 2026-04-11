@@ -116,14 +116,16 @@ function InfoTile(props) {
   const IconComponent = props.icon;
 
   return (
-    <div className="rounded-2xl border border-surface-border bg-surface px-4 py-3">
+    <div className="min-w-0 rounded-2xl border border-surface-border bg-surface px-4 py-3">
       <div className="mb-2 flex items-center gap-2 text-text-muted">
         <IconComponent size={15} />
         <span className="text-xs uppercase tracking-[0.18em]">
           {props.label}
         </span>
       </div>
-      <p className="text-sm font-medium text-text-primary">{props.value}</p>
+      <p className="min-w-0 break-words text-sm font-medium leading-5 text-text-primary">
+        {props.value}
+      </p>
     </div>
   );
 }

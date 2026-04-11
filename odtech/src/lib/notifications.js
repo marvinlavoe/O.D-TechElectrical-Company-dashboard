@@ -319,6 +319,7 @@ export async function fetchNotificationFeed(profile) {
   const preferences = normalizeNotificationPreferences(
     profile?.notification_preferences,
   );
+  const isAdmin = profile?.role === "admin";
   const today = startOfToday();
   const todayString = isoDate(today);
   const recentCustomerStart = isoDate(
@@ -418,13 +419,19 @@ export async function fetchNotificationFeed(profile) {
       preferences,
     ),
     ...buildCustomerNotifications(customersResponse.data || [], preferences),
-    ...buildInventoryNotifications(lowStockResponse.data || [], preferences),
-    ...buildBillingNotifications(
-      overdueInvoicesResponse.data || [],
-      receiptsTodayResponse.data || [],
-      preferences,
-    ),
-    ...buildSalesNotifications(salesTodayResponse.data || [], preferences),
+    ...(isAdmin
+      ? buildInventoryNotifications(lowStockResponse.data || [], preferences)
+      : []),
+    ...(isAdmin
+      ? buildBillingNotifications(
+          overdueInvoicesResponse.data || [],
+          receiptsTodayResponse.data || [],
+          preferences,
+        )
+      : []),
+    ...(isAdmin
+      ? buildSalesNotifications(salesTodayResponse.data || [], preferences)
+      : []),
   ]
     .sort(
       (left, right) =>
