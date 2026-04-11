@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Package, Hash, Tag, AlertTriangle } from 'lucide-react'
+import { Package, Hash, Tag, AlertTriangle, DollarSign } from 'lucide-react'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
@@ -29,7 +29,8 @@ const empty = {
   threshold: '',
   location: '',
   supplier: '',
-  cost: ''
+  cost: '',
+  selling_price: ''
 }
 
 export default function InventoryForm({ initial = empty, onSubmit, onCancel, loading = false }) {
@@ -145,6 +146,17 @@ export default function InventoryForm({ initial = empty, onSubmit, onCancel, loa
               value={form.cost}
               onChange={e => set('cost', e.target.value)}
             />
+            <Input
+              label="Selling Price"
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              icon={DollarSign}
+              value={form.selling_price}
+              onChange={e => set('selling_price', e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4">
             <Input
               label="Storage Location"
               placeholder="e.g. Aisle 3, Shelf B"

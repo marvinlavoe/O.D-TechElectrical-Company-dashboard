@@ -9,6 +9,7 @@ const PAGE_TITLES = {
   '/jobs':            'Jobs & Scheduling',
   '/workers':         'Workforce',
   '/inventory':       'Inventory',
+  '/sales':           'Sales',
   '/billing':         'Billing & Quotations',
   '/reports':         'Reports & Analytics',
   '/chat':            'Messages',

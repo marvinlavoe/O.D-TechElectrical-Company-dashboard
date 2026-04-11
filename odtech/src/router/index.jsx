@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import ProtectedRoute from './ProtectedRoute'
+import AdminRoute from './AdminRoute'
 import AppLayout from '../components/layout/AppLayout'
 import AuthLayout from '../components/layout/AuthLayout'
 
@@ -31,6 +32,7 @@ import InventoryDetailPage from '../pages/inventory/InventoryDetailPage'
 import BillingPage   from '../pages/billing/BillingPage'
 import ReceiptsPage  from '../pages/receipts/ReceiptsPage'
 import ReportsPage   from '../pages/reports/ReportsPage'
+import SalesPage     from '../pages/sales/SalesPage'
 import ChatPage      from '../pages/chat/ChatPage'
 import SettingsPage  from '../pages/settings/SettingsPage'
 
@@ -63,6 +65,7 @@ const router = createBrowserRouter([
       { path: '/workers/:id',            element: <WorkerDetailPage /> },
       { path: '/inventory',              element: <InventoryPage /> },
       { path: '/inventory/:id',          element: <InventoryDetailPage /> },
+      { path: '/sales',                  element: <AdminRoute><SalesPage /></AdminRoute> },
       { path: '/billing',                element: <BillingPage /> },
       { path: '/receipts',               element: <ReceiptsPage /> },
       { path: '/reports',                element: <ReportsPage /> },

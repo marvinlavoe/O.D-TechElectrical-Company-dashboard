@@ -8,6 +8,7 @@ import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import Drawer from '../../components/ui/Drawer'
 import InventoryForm from './InventoryForm'
+import { formatCurrency } from '../../lib/utils'
 
 export default function InventoryPage() {
   const navigate = useNavigate()
@@ -33,7 +34,9 @@ export default function InventoryPage() {
   }
 
   useEffect(() => {
-    fetchInventory()
+    queueMicrotask(() => {
+      fetchInventory()
+    })
   }, [])
 
   const handleAdd = async (form) => {
@@ -51,6 +54,7 @@ export default function InventoryPage() {
       status: status,
       supplier: form.supplier || null,
       cost: form.cost ? parseFloat(form.cost) : 0,
+      selling_price: form.selling_price ? parseFloat(form.selling_price) : 0,
       location: form.location || null
     }
 
@@ -74,6 +78,7 @@ export default function InventoryPage() {
     { key: 'name', header: 'Name' },
     { key: 'category', header: 'Category' },
     { key: 'qty', header: 'Qty', render: (val, row) => `${val} ${row.unit}` },
+    { key: 'selling_price', header: 'Selling Price', render: (val) => formatCurrency(val) },
     { key: 'threshold', header: 'Threshold' },
     { key: 'status', header: 'Status', render: (val) => (
         <Badge label={val} color={val === 'Low Stock' ? 'danger' : 'success'} />
@@ -106,6 +111,7 @@ export default function InventoryPage() {
         width="w-full md:w-[500px]"
       >
         <InventoryForm
+          key={`inventory-create-${drawerOpen ? "open" : "closed"}`}
           onSubmit={handleAdd}
           onCancel={() => setDrawerOpen(false)}
           loading={saving}

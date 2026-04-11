@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Briefcase, DollarSign, Users, AlertTriangle, TrendingUp, TrendingDown, Package, Clock } from 'lucide-react'
+import { Briefcase, DollarSign, AlertTriangle, TrendingUp, Package, Clock, ShoppingCart } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import StatCard from '../../components/ui/StatCard'
 import { formatCurrency, formatDate, statusColor } from '../../lib/utils'
@@ -16,8 +16,8 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({
     jobsToday: { value: 0, pending: 0 },
     revenueMTD: { value: 0, trend: 0 },
+    salesToday: { value: 0, count: 0 },
     collectedToday: 0,
-    workers: { active: 0, total: 0, available: 0 },
     overdueInvoices: 0,
     recentJobs: [],
     lowStock: [],
@@ -50,21 +50,22 @@ export default function AdminDashboard() {
         
         const mtdTotal = revenueData?.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0) || 0
 
+        // 2b. Fetch Sales Today
+        const { data: salesTodayData } = await supabase
+          .from('sales')
+          .select('total_amount')
+          .eq('sale_date', today)
+
+        const salesTodayTotal = salesTodayData?.reduce((acc, curr) => acc + (parseFloat(curr.total_amount) || 0), 0) || 0
+        const salesTodayCount = salesTodayData?.length || 0
+
         // 3. Fetch Overdue Invoices
         const { count: overdueCount } = await supabase
           .from('billing_documents')
           .select('*', { count: 'exact', head: true })
           .eq('status', 'Overdue')
 
-        // 4. Fetch Workers
-        const { data: workersData } = await supabase
-          .from('workers')
-          .select('status')
-        
-        const totalWorkers = workersData?.length || 0
-        const availableWorkers = workersData?.filter(w => w.status === 'Available').length || 0
-
-        // 5. Fetch Collected Today (Receipts)
+        // 4. Fetch Collected Today (Receipts)
         const { data: receiptsToday } = await supabase
           .from('receipts')
           .select('amount')
@@ -72,21 +73,21 @@ export default function AdminDashboard() {
         
         const collectedToday = receiptsToday?.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0) || 0
 
-        // 6. Fetch Recent Jobs
+        // 5. Fetch Recent Jobs
         const { data: recentJobs } = await supabase
           .from('jobs')
           .select('*, customers(name)')
           .order('created_at', { ascending: false })
           .limit(5)
 
-        // 7. Fetch Low Stock Alerts
+        // 6. Fetch Low Stock Alerts
         const { data: lowStock } = await supabase
           .from('inventory')
           .select('*')
           .eq('status', 'Low Stock')
           .limit(5)
 
-        // 8. Calculate Revenue Timeline (Actual data grouped by day)
+        // 7. Calculate Revenue Timeline (Actual data grouped by day)
         const dailyRevenue = (revenueData || []).reduce((acc, curr) => {
           const day = curr.date.split('-')[2] // Just the day number
           acc[day] = (acc[day] || 0) + parseFloat(curr.amount)
@@ -105,7 +106,7 @@ export default function AdminDashboard() {
           { name: 'Week 4', revenue: 0 },
         ]
 
-        // 9. Group jobs by status for Pie Chart
+        // 8. Group jobs by status for Pie Chart
         const { data: allJobs } = await supabase.from('jobs').select('status')
         const statusMap = (allJobs || []).reduce((acc, job) => {
           acc[job.status] = (acc[job.status] || 0) + 1
@@ -117,8 +118,8 @@ export default function AdminDashboard() {
         setStats({
           jobsToday: { value: jobsCount, pending: pendingJobs },
           revenueMTD: { value: mtdTotal, trend: 0 },
+          salesToday: { value: salesTodayTotal, count: salesTodayCount },
           collectedToday: collectedToday,
-          workers: { active: totalWorkers - availableWorkers, total: totalWorkers, available: availableWorkers },
           overdueInvoices: overdueCount || 0,
           recentJobs: recentJobs || [],
           lowStock: lowStock || [],
@@ -151,7 +152,7 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* ─── Top Stat Cards ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
         <StatCard 
           title="Jobs Today" 
           value={stats.jobsToday.value} 
@@ -165,6 +166,13 @@ export default function AdminDashboard() {
           subtitle="Invoiced this month" 
           icon={DollarSign} 
           color="text-success" 
+        />
+        <StatCard 
+          title="Sales Today" 
+          value={formatCurrency(stats.salesToday.value)} 
+          subtitle={`${stats.salesToday.count} transactions`} 
+          icon={ShoppingCart} 
+          color="text-warning" 
         />
         <StatCard 
           title="Collected Today" 
