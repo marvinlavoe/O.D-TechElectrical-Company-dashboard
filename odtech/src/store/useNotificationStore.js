@@ -1,29 +1,110 @@
-import { create } from 'zustand'
+import { create } from "zustand";
+import {
+  applyNotificationReadState,
+  fetchNotificationFeed,
+  readNotificationReadIds,
+  writeNotificationReadIds,
+} from "../lib/notifications";
 
 const useNotificationStore = create((set, get) => ({
   notifications: [],
   unreadCount: 0,
+  loading: false,
+  panelOpen: false,
+  lastFetchedAt: null,
+  currentUserId: null,
 
-  setNotifications: (notifications) =>
-    set({ notifications, unreadCount: notifications.filter(n => !n.is_read).length }),
+  setNotifications: (notifications, userId = get().currentUserId) =>
+    set({
+      notifications,
+      currentUserId: userId,
+      unreadCount: notifications.filter((notification) => !notification.is_read)
+        .length,
+    }),
 
-  addNotification: (notification) =>
-    set((state) => ({
-      notifications: [notification, ...state.notifications],
-      unreadCount: state.unreadCount + (notification.is_read ? 0 : 1),
-    })),
+  togglePanel: () => set((state) => ({ panelOpen: !state.panelOpen })),
+  setPanelOpen: (panelOpen) => set({ panelOpen }),
+
+  fetchNotifications: async (profile) => {
+    const userId = profile?.id || null;
+
+    if (!userId) {
+      set({
+        notifications: [],
+        unreadCount: 0,
+        currentUserId: null,
+        loading: false,
+        lastFetchedAt: null,
+      });
+      return [];
+    }
+
+    set({ loading: true, currentUserId: userId });
+
+    try {
+      const notifications = await fetchNotificationFeed(profile);
+      const hydratedNotifications = applyNotificationReadState(
+        notifications,
+        userId,
+      );
+
+      set({
+        notifications: hydratedNotifications,
+        unreadCount: hydratedNotifications.filter((notification) => !notification.is_read)
+          .length,
+        currentUserId: userId,
+        loading: false,
+        lastFetchedAt: new Date().toISOString(),
+      });
+
+      return hydratedNotifications;
+    } catch (error) {
+      console.error("Notification fetch error:", error);
+      set({ loading: false });
+      throw error;
+    }
+  },
 
   markAllRead: () =>
-    set((state) => ({
-      notifications: state.notifications.map(n => ({ ...n, is_read: true })),
-      unreadCount: 0,
-    })),
+    set((state) => {
+      const currentUserId = state.currentUserId;
+      const updatedNotifications = state.notifications.map((notification) => ({
+        ...notification,
+        is_read: true,
+      }));
+
+      if (currentUserId) {
+        writeNotificationReadIds(
+          currentUserId,
+          updatedNotifications.map((notification) => notification.id),
+        );
+      }
+
+      return {
+        notifications: updatedNotifications,
+        unreadCount: 0,
+      };
+    }),
 
   markRead: (id) =>
     set((state) => {
-      const updated = state.notifications.map(n => n.id === id ? { ...n, is_read: true } : n)
-      return { notifications: updated, unreadCount: updated.filter(n => !n.is_read).length }
-    }),
-}))
+      const updatedNotifications = state.notifications.map((notification) =>
+        notification.id === id
+          ? { ...notification, is_read: true }
+          : notification,
+      );
 
-export default useNotificationStore
+      if (state.currentUserId) {
+        const readIds = readNotificationReadIds(state.currentUserId);
+        writeNotificationReadIds(state.currentUserId, [...readIds, id]);
+      }
+
+      return {
+        notifications: updatedNotifications,
+        unreadCount: updatedNotifications.filter((notification) => !notification.is_read)
+          .length,
+      };
+    }),
+}));
+
+export default useNotificationStore;

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Calendar, CreditCard, Package, Plus, Trash2 } from "lucide-react";
+import { Calendar, CreditCard, Package, Plus, Search, Trash2 } from "lucide-react";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
 import Button from "../../components/ui/Button";
@@ -17,7 +17,12 @@ const emptyLine = {
   inventory_id: "",
   quantity: "1",
   unit_price: "",
+  search_text: "",
 };
+
+function getInventoryOptionLabel(item) {
+  return `${item.name} (${item.qty} ${item.unit})`;
+}
 
 function getDefaultForm() {
   return {
@@ -42,6 +47,7 @@ export default function SalesForm({
 }) {
   const [form, setForm] = useState(getDefaultForm);
   const [errors, setErrors] = useState({});
+  const [activeItemSearch, setActiveItemSearch] = useState(null);
 
   const inventoryMap = useMemo(
     () => getInventoryMap(inventoryItems),
@@ -85,6 +91,7 @@ export default function SalesForm({
           ? String(inventory.selling_price ?? 0)
           : "";
         nextItem.quantity = inventory && Number(inventory.qty) > 0 ? "1" : "0";
+        nextItem.search_text = inventory ? getInventoryOptionLabel(inventory) : "";
       }
 
       items[index] = nextItem;
@@ -101,6 +108,12 @@ export default function SalesForm({
   };
 
   const removeLine = (index) => {
+    setActiveItemSearch((prev) => {
+      if (prev === index) return null;
+      if (prev !== null && prev > index) return prev - 1;
+      return prev;
+    });
+
     setForm((prev) => {
       if (prev.items.length === 1) {
         return { ...prev, items: [{ ...emptyLine }] };
@@ -111,6 +124,41 @@ export default function SalesForm({
         items: prev.items.filter((_, itemIndex) => itemIndex !== index),
       };
     });
+  };
+
+  const handleInventorySearchChange = (index, value) => {
+    setForm((prev) => {
+      const items = [...prev.items];
+      const currentItem = items[index];
+      const selectedInventory = inventoryMap.get(currentItem.inventory_id);
+      const selectedLabel = selectedInventory
+        ? getInventoryOptionLabel(selectedInventory)
+        : "";
+
+      items[index] =
+        selectedInventory && value === selectedLabel
+          ? { ...currentItem, search_text: value }
+          : {
+              ...currentItem,
+              search_text: value,
+              inventory_id: "",
+              unit_price: "",
+              quantity: "1",
+            };
+
+      return { ...prev, items };
+    });
+
+    setActiveItemSearch(index);
+
+    if (errors.items) {
+      setErrors((prev) => ({ ...prev, items: "" }));
+    }
+  };
+
+  const handleSelectInventory = (index, inventoryId) => {
+    setLineField(index, "inventory_id", inventoryId);
+    setActiveItemSearch(null);
   };
 
   const validate = () => {
@@ -225,6 +273,14 @@ export default function SalesForm({
           {lineItems.map((item, index) => {
             const availableStock = Number(item.inventory?.qty ?? 0);
             const unitLabel = item.inventory?.unit || "pcs";
+            const searchTerm = (item.search_text || "").trim().toLowerCase();
+            const filteredInventoryItems = searchTerm
+              ? inventoryItems.filter((inventory) =>
+                  getInventoryOptionLabel(inventory)
+                    .toLowerCase()
+                    .includes(searchTerm),
+                )
+              : inventoryItems.slice(0, 8);
 
             return (
               <div
@@ -232,19 +288,63 @@ export default function SalesForm({
                 className="rounded-2xl border border-surface-border bg-surface p-4"
               >
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,2fr)_100px_130px_auto]">
-                  <Select
-                    label={`Item ${index + 1}`}
-                    value={item.inventory_id}
-                    onChange={(event) =>
-                      setLineField(index, "inventory_id", event.target.value)
-                    }
-                    options={inventoryItems.map((inventory) => ({
-                      value: inventory.id,
-                      label: `${inventory.name} (${inventory.qty} ${inventory.unit})`,
-                    }))}
-                    placeholder="Select item"
-                    required
-                  />
+                  <div className="relative flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-text-secondary">
+                      {`Item ${index + 1}`}
+                    </label>
+                    <Input
+                      placeholder="Search and select item"
+                      icon={Search}
+                      value={item.search_text || ""}
+                      onFocus={() => setActiveItemSearch(index)}
+                      onBlur={() => setTimeout(() => setActiveItemSearch(null), 150)}
+                      onChange={(event) =>
+                        handleInventorySearchChange(index, event.target.value)
+                      }
+                      required
+                    />
+                    {activeItemSearch === index && (
+                      <div className="absolute z-20 mt-[72px] max-h-56 w-full overflow-y-auto rounded-lg border border-surface-border bg-surface-card shadow-xl">
+                        {filteredInventoryItems.length > 0 ? (
+                          filteredInventoryItems.map((inventory) => {
+                            const isSelected =
+                              String(inventory.id) === String(item.inventory_id);
+
+                            return (
+                              <button
+                                key={inventory.id}
+                                type="button"
+                                onMouseDown={() =>
+                                  handleSelectInventory(index, inventory.id)
+                                }
+                                className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors ${
+                                  isSelected
+                                    ? "bg-primary/10 text-primary"
+                                    : "text-text-primary hover:bg-surface"
+                                }`}
+                              >
+                                <div>
+                                  <p className="font-medium">{inventory.name}</p>
+                                  <p className="text-xs text-text-muted">
+                                    {inventory.qty} {inventory.unit} in stock
+                                  </p>
+                                </div>
+                                <span className="text-xs font-semibold">
+                                  {isSelected
+                                    ? "Selected"
+                                    : formatCurrency(inventory.selling_price)}
+                                </span>
+                              </button>
+                            );
+                          })
+                        ) : (
+                          <div className="px-3 py-2 text-sm text-text-muted">
+                            No inventory items match your search.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   <Input
                     label="Qty"
