@@ -11,13 +11,12 @@ const useAuthStore = create((set) => ({
   setLoading: (loading) => set({ loading }),
 
   fetchProfile: async (userId) => {
-    console.log("📦 fetchProfile: Starting for userId:", userId);
-    try {
-      console.log(
-        '📦 fetchProfile: Calling supabase.from("profiles").select()',
-      );
+    if (!userId) {
+      set({ profile: null });
+      return null;
+    }
 
-      // Wrap in timeout to avoid indefinite hangs
+    try {
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(
           () => reject(new Error("Profile fetch timeout after 5s")),
@@ -36,33 +35,19 @@ const useAuthStore = create((set) => ({
         timeoutPromise,
       ]);
 
-      console.log(
-        "📦 fetchProfile: Query returned, error:",
-        error,
-        "data:",
-        data,
-      );
-
       if (error) {
-        console.warn("📦 fetchProfile error:", error);
-        // Don't fail on "not found", just return null (profile may not exist yet)
-        if (error.code === "PGRST116") {
-          console.log(
-            "📦 fetchProfile: No profile found (this is ok for new users)",
-          );
-          set({ profile: null });
-          return null;
+        if (error.code !== "PGRST116") {
+          console.warn("Profile fetch error:", error);
         }
+
         set({ profile: null });
         return null;
       }
 
-      console.log("📦 fetchProfile: Setting profile data");
       set({ profile: data });
-      console.log("📦 fetchProfile: Profile set successfully");
       return data;
-    } catch (err) {
-      console.error("📦 fetchProfile exception:", err);
+    } catch (error) {
+      console.error("Profile fetch exception:", error);
       set({ profile: null });
       return null;
     }

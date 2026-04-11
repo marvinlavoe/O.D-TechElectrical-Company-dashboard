@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import { supabase } from "./lib/supabase";
+import { applySystemPreferences, readStoredSystemPreferences } from "./lib/settings";
 import useAuthStore from "./store/useAuthStore";
 import Router from "./router";
 import "./index.css";
@@ -51,6 +52,8 @@ supabase.auth
     store.setProfile(null);
     store.setLoading(false);
   });
+
+applySystemPreferences(readStoredSystemPreferences());
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
