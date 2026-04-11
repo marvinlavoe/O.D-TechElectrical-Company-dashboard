@@ -164,6 +164,10 @@ function getChatErrorMessage(error) {
     return "Chat tables are missing. Run the chat migration first.";
   }
 
+  if (error?.code === "PGRST202") {
+    return "Chat setup is incomplete. Run the latest chat migration first.";
+  }
+
   return error?.message || "Unable to load chat right now.";
 }
 
@@ -511,25 +515,20 @@ export default function ChatPage() {
     setStartingDmId(person.id);
 
     try {
-      const { data: channel, error: channelError } = await supabase
-        .from("channels")
-        .insert([{ name: "Direct message", type: "dm", created_by: currentUserId }])
-        .select("id, name, type, created_at")
-        .single();
+      const { data: channelData, error: channelError } = await supabase.rpc(
+        "create_direct_message_channel",
+        {
+          target_user_id: person.id,
+        },
+      );
 
       if (channelError) throw channelError;
 
-      const { error: membersError } = await supabase
-        .from("channel_members")
-        .upsert(
-          [
-            { channel_id: channel.id, user_id: currentUserId },
-            { channel_id: channel.id, user_id: person.id },
-          ],
-          { onConflict: "channel_id,user_id" },
-        );
+      const channel = Array.isArray(channelData) ? channelData[0] : channelData;
 
-      if (membersError) throw membersError;
+      if (!channel?.id) {
+        throw new Error("Unable to create a direct message channel.");
+      }
 
       const nextChannel = {
         ...channel,
