@@ -15,6 +15,7 @@ const PAGE_TITLES = {
   "/workers": "Workforce",
   "/inventory": "Inventory",
   "/sales": "Sales",
+  "/merchant-hub": "Merchant Hub",
   "/billing": "Billing & Quotations",
   "/reports": "Reports & Analytics",
   "/chat": "Messages",

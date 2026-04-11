@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Briefcase, DollarSign, AlertTriangle, TrendingUp, Package, Clock, ShoppingCart } from 'lucide-react'
+import { Briefcase, DollarSign, AlertTriangle, TrendingUp, Package, Clock, ShoppingCart, Smartphone } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import StatCard from '../../components/ui/StatCard'
 import { formatCurrency, formatDate, statusColor } from '../../lib/utils'
@@ -17,6 +17,7 @@ export default function AdminDashboard() {
     jobsToday: { value: 0, pending: 0 },
     revenueMTD: { value: 0, trend: 0 },
     salesToday: { value: 0, count: 0 },
+    merchantCommissionToday: { value: 0, physical: 0, electronic: 0 },
     collectedToday: 0,
     overdueInvoices: 0,
     recentJobs: [],
@@ -58,6 +59,16 @@ export default function AdminDashboard() {
 
         const salesTodayTotal = salesTodayData?.reduce((acc, curr) => acc + (parseFloat(curr.total_amount) || 0), 0) || 0
         const salesTodayCount = salesTodayData?.length || 0
+
+        const { data: merchantHubToday } = await supabase
+          .from('merchant_hub_entries')
+          .select('physical_commission, electronic_commission')
+          .eq('entry_date', today)
+          .maybeSingle()
+
+        const physicalCommissionToday = parseFloat(merchantHubToday?.physical_commission || 0) || 0
+        const electronicCommissionToday = parseFloat(merchantHubToday?.electronic_commission || 0) || 0
+        const merchantCommissionTodayTotal = physicalCommissionToday + electronicCommissionToday
 
         // 3. Fetch Overdue Invoices
         const { count: overdueCount } = await supabase
@@ -119,6 +130,11 @@ export default function AdminDashboard() {
           jobsToday: { value: jobsCount, pending: pendingJobs },
           revenueMTD: { value: mtdTotal, trend: 0 },
           salesToday: { value: salesTodayTotal, count: salesTodayCount },
+          merchantCommissionToday: {
+            value: merchantCommissionTodayTotal,
+            physical: physicalCommissionToday,
+            electronic: electronicCommissionToday,
+          },
           collectedToday: collectedToday,
           overdueInvoices: overdueCount || 0,
           recentJobs: recentJobs || [],
@@ -152,7 +168,7 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* ─── Top Stat Cards ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         <StatCard 
           title="Jobs Today" 
           value={stats.jobsToday.value} 
@@ -173,6 +189,13 @@ export default function AdminDashboard() {
           subtitle={`${stats.salesToday.count} transactions`} 
           icon={ShoppingCart} 
           color="text-warning" 
+        />
+        <StatCard
+          title="MoMo Commission Today"
+          value={formatCurrency(stats.merchantCommissionToday.value)}
+          subtitle={`Physical ${formatCurrency(stats.merchantCommissionToday.physical)} | Electronic ${formatCurrency(stats.merchantCommissionToday.electronic)}`}
+          icon={Smartphone}
+          color="text-info"
         />
         <StatCard 
           title="Collected Today" 

@@ -33,6 +33,7 @@ import BillingPage   from '../pages/billing/BillingPage'
 import ReceiptsPage  from '../pages/receipts/ReceiptsPage'
 import ReportsPage   from '../pages/reports/ReportsPage'
 import SalesPage     from '../pages/sales/SalesPage'
+import MerchantHubPage from '../pages/merchant-hub/MerchantHubPage'
 import ChatPage      from '../pages/chat/ChatPage'
 import SettingsPage  from '../pages/settings/SettingsPage'
 
@@ -66,6 +67,7 @@ const router = createBrowserRouter([
       { path: '/inventory',              element: <AdminRoute><InventoryPage /></AdminRoute> },
       { path: '/inventory/:id',          element: <AdminRoute><InventoryDetailPage /></AdminRoute> },
       { path: '/sales',                  element: <AdminRoute><SalesPage /></AdminRoute> },
+      { path: '/merchant-hub',           element: <AdminRoute><MerchantHubPage /></AdminRoute> },
       { path: '/billing',                element: <AdminRoute><BillingPage /></AdminRoute> },
       { path: '/receipts',               element: <AdminRoute><ReceiptsPage /></AdminRoute> },
       { path: '/reports',                element: <AdminRoute><ReportsPage /></AdminRoute> },
