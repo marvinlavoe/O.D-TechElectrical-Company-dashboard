@@ -9,12 +9,13 @@ import Drawer from '../../components/ui/Drawer'
 import InvoiceForm from './InvoiceForm'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import { generateInvoicePDF } from '../../lib/pdfGenerator'
+import useAuthStore from '../../store/useAuthStore'
 
 export default function BillingPage() {
+  const { profile, session } = useAuthStore()
   const [activeTab, setActiveTab] = useState('invoices') // 'invoices' | 'quotes' | 'payments'
   const [invoices, setInvoices] = useState([])
   const [quotes, setQuotes] = useState([])
-  const [payments, setPayments] = useState([])
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingRecord, setEditingRecord] = useState(null)
   const [formType, setFormType] = useState('Invoice') // 'Invoice' | 'Quote'
@@ -38,7 +39,9 @@ export default function BillingPage() {
   }
 
   useEffect(() => {
-    fetchData()
+    queueMicrotask(() => {
+      fetchData()
+    })
   }, [])
 
   const handleOpenDrawer = (type, record = null) => {
@@ -152,14 +155,21 @@ export default function BillingPage() {
     }
   }
 
-  const handleGeneratePDF = (row, type) => {
+  const handleGeneratePDF = async (row, type) => {
     // pdfGenerator expects { customer, items: [...] }
     const pdfData = {
       ...row,
       customer: row.customers?.name,
-      items: row.document_items || []
+      items: row.document_items || [],
+      generated_by: profile?.full_name || session?.user?.email || 'Account user'
     }
-    generateInvoicePDF(pdfData, type)
+
+    try {
+      await generateInvoicePDF(pdfData, type)
+    } catch (error) {
+      console.error(error)
+      toast.error(`Failed to generate ${type.toLowerCase()} PDF`)
+    }
   }
 
   // Columns for Invoices / Quotes
