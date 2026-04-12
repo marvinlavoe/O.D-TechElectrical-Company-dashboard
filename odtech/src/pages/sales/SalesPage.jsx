@@ -13,6 +13,31 @@ function getTodayDate() {
   return new Date().toISOString().split("T")[0];
 }
 
+function getSaleProfit(sale, inventoryCostMap = new Map()) {
+  return (sale.sale_items || []).reduce(
+    (sum, item) => {
+      const snapshotProfit = Number(item.line_profit);
+
+      if (Number.isFinite(snapshotProfit)) {
+        return sum + snapshotProfit;
+      }
+
+      const unitPrice = Number(item.unit_price || 0);
+      const quantity = Number(item.quantity || 0);
+      const costSnapshot = Number(item.cost_price_snapshot);
+      const currentInventoryCost = Number(
+        inventoryCostMap.get(item.inventory_id)?.cost || 0,
+      );
+      const fallbackCost = Number.isFinite(costSnapshot)
+        ? costSnapshot
+        : currentInventoryCost;
+
+      return sum + (unitPrice - fallbackCost) * quantity;
+    },
+    0,
+  );
+}
+
 export default function SalesPage() {
   const [sales, setSales] = useState([]);
   const [todaySales, setTodaySales] = useState([]);
@@ -41,11 +66,11 @@ export default function SalesPage() {
           .limit(50),
         supabase
           .from("sales")
-          .select("id, total_amount, sale_items(quantity)")
+          .select("id, total_amount, sale_items(*)")
           .eq("sale_date", today),
         supabase
           .from("inventory")
-          .select("id, name, qty, unit, selling_price, threshold, status")
+          .select("id, name, qty, unit, cost, selling_price, threshold, status")
           .order("name", { ascending: true }),
         supabase
           .from("customers")
@@ -79,6 +104,17 @@ export default function SalesPage() {
     fetchSalesData();
   }, []);
 
+  const inventoryCostMap = useMemo(
+    () =>
+      new Map(
+        inventoryItems.map((item) => [
+          item.id,
+          { cost: Number(item.cost || 0) },
+        ]),
+      ),
+    [inventoryItems],
+  );
+
   const stats = useMemo(() => {
     const totalSales = todaySales.reduce(
       (sum, sale) => sum + Number(sale.total_amount || 0),
@@ -94,13 +130,19 @@ export default function SalesPage() {
       return sum + quantity;
     }, 0);
 
+    const totalProfit = todaySales.reduce(
+      (sum, sale) => sum + getSaleProfit(sale, inventoryCostMap),
+      0,
+    );
+
     return {
       totalSales,
       transactions,
       itemsSold,
+      totalProfit,
       averageSale: transactions ? totalSales / transactions : 0,
     };
-  }, [todaySales]);
+  }, [todaySales, inventoryCostMap]);
 
   const handleCreateSale = async (form) => {
     setSaving(true);
@@ -165,6 +207,16 @@ export default function SalesPage() {
     },
     { key: "payment_method", header: "Payment" },
     {
+      key: "profit",
+      header: "Profit",
+      render: (_, row) => (
+        <span className={`font-semibold ${getSaleProfit(row, inventoryCostMap) >= 0 ? "text-success" : "text-danger"}`}>
+          {formatCurrency(getSaleProfit(row, inventoryCostMap))}
+        </span>
+      ),
+      searchValue: (row) => String(getSaleProfit(row, inventoryCostMap)),
+    },
+    {
       key: "total_amount",
       header: "Total",
       render: (value) => (
@@ -217,9 +269,9 @@ export default function SalesPage() {
           color="text-primary"
         />
         <StatCard
-          title="Average Sale"
-          value={formatCurrency(stats.averageSale)}
-          subtitle="Average value per transaction"
+          title="Profit Today"
+          value={formatCurrency(stats.totalProfit)}
+          subtitle="Realized profit from recorded sales"
           icon={ShoppingCart}
           color="text-warning"
         />

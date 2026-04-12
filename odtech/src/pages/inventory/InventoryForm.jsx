@@ -47,6 +47,8 @@ export default function InventoryForm({ initial = empty, onSubmit, onCancel, loa
     if (!form.name.trim()) e.name = 'Item name is required'
     if (form.qty === '' || isNaN(form.qty)) e.qty = 'Valid quantity is required'
     if (form.threshold === '' || isNaN(form.threshold)) e.threshold = 'Valid threshold is required'
+    if (form.cost !== '' && (isNaN(form.cost) || Number(form.cost) < 0)) e.cost = 'Cost price must be a valid non-negative amount'
+    if (form.selling_price !== '' && (isNaN(form.selling_price) || Number(form.selling_price) < 0)) e.selling_price = 'Selling price must be a valid non-negative amount'
     return e
   }
 
@@ -139,12 +141,13 @@ export default function InventoryForm({ initial = empty, onSubmit, onCancel, loa
           />
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Unit Cost"
+              label="Cost Price"
               type="number"
               step="0.01"
               placeholder="0.00"
               value={form.cost}
               onChange={e => set('cost', e.target.value)}
+              error={errors.cost}
             />
             <Input
               label="Selling Price"
@@ -154,6 +157,7 @@ export default function InventoryForm({ initial = empty, onSubmit, onCancel, loa
               icon={DollarSign}
               value={form.selling_price}
               onChange={e => set('selling_price', e.target.value)}
+              error={errors.selling_price}
             />
           </div>
           <div className="grid grid-cols-1 gap-4">

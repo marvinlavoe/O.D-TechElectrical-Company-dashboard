@@ -10,6 +10,7 @@ import {
   Tag,
   Edit2,
   TrendingUp,
+  DollarSign,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
@@ -126,6 +127,8 @@ export default function InventoryDetailPage() {
 
   const ST_COLOR = item.status === 'In Stock' ? 'success' : item.status === 'Low Stock' ? 'warning' : 'danger'
   const isLowStock = parseInt(item.qty, 10) <= parseInt(item.threshold, 10)
+  const unitProfit = Number(item.selling_price || 0) - Number(item.cost || 0)
+  const potentialProfit = unitProfit * Number(item.qty || 0)
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -157,7 +160,7 @@ export default function InventoryDetailPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-6 pt-5 border-t border-surface-border">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mt-6 pt-5 border-t border-surface-border">
           <div className="bg-surface rounded-lg p-3 border border-surface-border relative overflow-hidden">
             {isLowStock && <div className="absolute top-0 right-0 w-1.5 h-full bg-danger"></div>}
             <p className="text-xs text-text-muted flex items-center gap-1.5 mb-1"><Hash size={12} /> Quantity</p>
@@ -172,12 +175,16 @@ export default function InventoryDetailPage() {
             </p>
           </div>
           <div className="bg-surface rounded-lg p-3 border border-surface-border">
-            <p className="text-xs text-text-muted flex items-center gap-1.5 mb-1"><Tag size={12} /> Unit Cost</p>
+            <p className="text-xs text-text-muted flex items-center gap-1.5 mb-1"><Tag size={12} /> Cost Price</p>
             <p className="text-xl font-bold text-text-primary">{item.cost ? formatCurrency(item.cost) : '-'}</p>
           </div>
           <div className="bg-surface rounded-lg p-3 border border-surface-border">
             <p className="text-xs text-text-muted flex items-center gap-1.5 mb-1"><TrendingUp size={12} /> Selling Price</p>
             <p className="text-xl font-bold text-text-primary">{formatCurrency(item.selling_price)}</p>
+          </div>
+          <div className="bg-surface rounded-lg p-3 border border-surface-border">
+            <p className="text-xs text-text-muted flex items-center gap-1.5 mb-1"><DollarSign size={12} /> Unit Profit</p>
+            <p className={`text-xl font-bold ${unitProfit >= 0 ? 'text-success' : 'text-danger'}`}>{formatCurrency(unitProfit)}</p>
           </div>
           <div className="bg-surface rounded-lg p-3 border border-surface-border">
             <p className="text-xs text-text-muted flex items-center gap-1.5 mb-1"><MapPin size={12} /> Location</p>
@@ -193,6 +200,7 @@ export default function InventoryDetailPage() {
               <InfoRow icon={ShoppingCart} label="Default Supplier" value={item.supplier} />
               <InfoRow icon={Tag} label="Last Known Cost" value={item.cost ? formatCurrency(item.cost) : null} />
               <InfoRow icon={TrendingUp} label="Selling Price" value={formatCurrency(item.selling_price)} />
+              <InfoRow icon={DollarSign} label="Potential Profit on Stock" value={formatCurrency(potentialProfit)} />
             </div>
             {item.supplier && (
               <div className="mt-5 pt-4 border-t border-surface-border">

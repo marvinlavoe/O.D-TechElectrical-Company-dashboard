@@ -10,6 +10,10 @@ import Drawer from '../../components/ui/Drawer'
 import InventoryForm from './InventoryForm'
 import { formatCurrency } from '../../lib/utils'
 
+function getUnitProfit(item) {
+  return Number(item?.selling_price || 0) - Number(item?.cost || 0)
+}
+
 export default function InventoryPage() {
   const navigate = useNavigate()
   const [inventory, setInventory] = useState([])
@@ -78,7 +82,21 @@ export default function InventoryPage() {
     { key: 'name', header: 'Name' },
     { key: 'category', header: 'Category' },
     { key: 'qty', header: 'Qty', render: (val, row) => `${val} ${row.unit}` },
+    { key: 'cost', header: 'Cost Price', render: (val) => formatCurrency(val) },
     { key: 'selling_price', header: 'Selling Price', render: (val) => formatCurrency(val) },
+    {
+      key: 'unit_profit',
+      header: 'Unit Profit',
+      render: (_, row) => {
+        const profit = getUnitProfit(row)
+        return (
+          <span className={`font-medium ${profit >= 0 ? 'text-success' : 'text-danger'}`}>
+            {formatCurrency(profit)}
+          </span>
+        )
+      },
+      searchValue: row => `${row.cost ?? ''} ${row.selling_price ?? ''}`,
+    },
     { key: 'threshold', header: 'Threshold' },
     { key: 'status', header: 'Status', render: (val) => (
         <Badge label={val} color={val === 'Low Stock' ? 'danger' : 'success'} />
