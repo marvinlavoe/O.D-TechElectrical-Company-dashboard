@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Users, UserCheck, UserX, CalendarPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import toast from "react-hot-toast";
@@ -7,6 +7,7 @@ import DataTable from "../../components/ui/DataTable";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import Drawer from "../../components/ui/Drawer";
+import StatCard from "../../components/ui/StatCard";
 import CustomerForm from "./CustomerForm";
 import { buildCustomerInsertPayload } from "../../lib/customerPayloads";
 
@@ -48,7 +49,6 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [lastRequestTime, setLastRequestTime] = useState(0);
 
-  // Fetch customers from Supabase
   const fetchCustomers = async () => {
     setLoading(true);
     try {
@@ -78,7 +78,6 @@ export default function CustomersPage() {
   }, []);
 
   const handleAdd = async (form) => {
-    // Prevent rapid successive requests (throttle for 1 second)
     const now = Date.now();
     if (now - lastRequestTime < 1000) {
       toast.error("Please wait a moment before submitting again.");
@@ -86,7 +85,7 @@ export default function CustomersPage() {
     }
     setLastRequestTime(now);
 
-    if (saving) return; // Prevent concurrent requests
+    if (saving) return;
 
     setSaving(true);
 
@@ -147,13 +146,21 @@ export default function CustomersPage() {
     },
   ];
 
+  const activeCustomers = customers.filter((customer) => customer.status === "Active").length;
+  const inactiveCustomers = customers.filter((customer) => customer.status === "Inactive").length;
+  const now = new Date();
+  const newThisMonth = customers.filter((customer) => {
+    if (!customer.created_at) return false;
+    const createdAt = new Date(customer.created_at);
+    return createdAt.getMonth() === now.getMonth() && createdAt.getFullYear() === now.getFullYear();
+  }).length;
+
   return (
     <div className="space-y-6">
-      {/* ─── Page header ─── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Customers</h1>
-          <p className="text-sm text-text-muted mt-0.5">
+          <p className="mt-0.5 text-sm text-text-muted">
             {loading
               ? "Loading..."
               : `${customers.length} customer${customers.length !== 1 ? "s" : ""} total`}
@@ -165,10 +172,39 @@ export default function CustomersPage() {
         </Button>
       </div>
 
-      {/* ─── Table ─── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Total Customers"
+          value={customers.length}
+          subtitle="All customer records"
+          icon={Users}
+          color="text-primary"
+        />
+        <StatCard
+          title="Active"
+          value={activeCustomers}
+          subtitle="Currently active customers"
+          icon={UserCheck}
+          color="text-success"
+        />
+        <StatCard
+          title="Inactive"
+          value={inactiveCustomers}
+          subtitle="Customers marked inactive"
+          icon={UserX}
+          color="text-danger"
+        />
+        <StatCard
+          title="New This Month"
+          value={newThisMonth}
+          subtitle="Added in the current month"
+          icon={CalendarPlus}
+          color="text-info"
+        />
+      </div>
+
       <DataTable columns={columns} data={customers} />
 
-      {/* ─── Add-Customer Drawer ─── */}
       <Drawer
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}

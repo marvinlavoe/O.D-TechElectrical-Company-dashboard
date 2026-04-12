@@ -12,7 +12,7 @@ export default function DataTable({
   searchable = true,
 }) {
   const [query, setQuery] = useState('')
-  const [page, setPage]   = useState(1)
+  const [page, setPage] = useState(1)
 
   const filtered = data.filter(row =>
     columns.some(col =>
@@ -21,28 +21,76 @@ export default function DataTable({
         .includes(query.toLowerCase())
     )
   )
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const slice = filtered.slice((page - 1) * pageSize, page * pageSize)
 
   return (
-    <div className="bg-surface-card rounded-xl border border-surface-border overflow-hidden">
+    <div className="overflow-hidden rounded-xl border border-surface-border bg-surface-card">
       {searchable && (
-        <div className="px-4 py-3 border-b border-surface-border">
-          <div className="relative max-w-xs">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+        <div className="border-b border-surface-border px-4 py-3">
+          <div className="relative w-full max-w-xs">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
+            />
             <input
               value={query}
-              onChange={e => { setQuery(e.target.value); setPage(1) }}
+              onChange={e => {
+                setQuery(e.target.value)
+                setPage(1)
+              }}
               placeholder="Search…"
-              className="w-full bg-surface border border-surface-border rounded-lg pl-8 pr-3 py-1.5
+              className="w-full rounded-lg border border-surface-border bg-surface py-1.5 pl-8 pr-3
                          text-sm text-text-primary placeholder:text-text-muted
-                         focus:outline-none focus:border-primary transition-colors"
+                         transition-colors focus:outline-none focus:border-primary"
             />
           </div>
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      <div className="md:hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <LoadingSpinner />
+          </div>
+        ) : slice.length === 0 ? (
+          <EmptyState title="No results found" />
+        ) : (
+          <div className="divide-y divide-surface-border">
+            {slice.map((row, i) => (
+              <button
+                key={row.id ?? i}
+                type="button"
+                onClick={() => onRowClick?.(row)}
+                className={`w-full px-4 py-4 text-left transition-colors ${
+                  onRowClick ? 'cursor-pointer hover:bg-surface' : 'cursor-default'
+                }`}
+              >
+                <div className="space-y-3">
+                  {columns.map(col => (
+                    <div
+                      key={col.key}
+                      className="flex items-start justify-between gap-4"
+                    >
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                        {col.header}
+                      </span>
+                      <div className="min-w-0 flex-1 break-words text-right text-sm text-text-secondary">
+                        {col.render
+                          ? col.render(row[col.key], row)
+                          : (row[col.key] ?? '—')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <LoadingSpinner />
@@ -56,7 +104,7 @@ export default function DataTable({
                 {columns.map(col => (
                   <th
                     key={col.key}
-                    className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap"
+                    className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted"
                   >
                     {col.header}
                   </th>
@@ -68,11 +116,20 @@ export default function DataTable({
                 <tr
                   key={row.id ?? i}
                   onClick={() => onRowClick?.(row)}
-                  className={`transition-colors ${onRowClick ? 'cursor-pointer hover:bg-surface-hover' : 'hover:bg-surface/50'}`}
+                  className={`transition-colors ${
+                    onRowClick
+                      ? 'cursor-pointer hover:bg-surface-hover'
+                      : 'hover:bg-surface/50'
+                  }`}
                 >
                   {columns.map(col => (
-                    <td key={col.key} className="px-4 py-3 text-text-secondary whitespace-nowrap">
-                      {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '—')}
+                    <td
+                      key={col.key}
+                      className="whitespace-nowrap px-4 py-3 text-text-secondary"
+                    >
+                      {col.render
+                        ? col.render(row[col.key], row)
+                        : (row[col.key] ?? '—')}
                     </td>
                   ))}
                 </tr>
@@ -82,25 +139,26 @@ export default function DataTable({
         )}
       </div>
 
-      {/* Pagination */}
       {!loading && filtered.length > pageSize && (
-        <div className="px-4 py-3 border-t border-surface-border flex items-center justify-between">
+        <div className="flex flex-col gap-3 border-t border-surface-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-text-muted">
             {Math.min((page - 1) * pageSize + 1, filtered.length)}–{Math.min(page * pageSize, filtered.length)} of {filtered.length}
           </p>
-          <div className="flex gap-1">
+          <div className="flex gap-1 self-end sm:self-auto">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="p-1.5 rounded-lg hover:bg-surface disabled:opacity-40 transition-colors"
+              className="rounded-lg p-1.5 transition-colors hover:bg-surface disabled:opacity-40"
             >
               <ChevronLeft size={16} className="text-text-secondary" />
             </button>
-            <span className="px-2 py-1 text-xs text-text-muted self-center">{page} / {totalPages}</span>
+            <span className="self-center px-2 py-1 text-xs text-text-muted">
+              {page} / {totalPages}
+            </span>
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="p-1.5 rounded-lg hover:bg-surface disabled:opacity-40 transition-colors"
+              className="rounded-lg p-1.5 transition-colors hover:bg-surface disabled:opacity-40"
             >
               <ChevronRight size={16} className="text-text-secondary" />
             </button>

@@ -125,8 +125,8 @@ export default function Header() {
   };
 
   return (
-    <header className="h-14 bg-surface-card border-b border-surface-border flex items-center justify-between px-6 flex-shrink-0">
-      <div className="flex items-center gap-4">
+    <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-surface-border bg-surface-card px-4 sm:px-6">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-4">
         <button
           onClick={toggleMobile}
           className="p-2 rounded-lg hover:bg-surface transition-colors lg:hidden"
@@ -139,10 +139,10 @@ export default function Header() {
         >
           <Menu size={20} className="text-text-secondary" />
         </button>
-        <h1 className="text-base font-semibold text-text-primary">{title}</h1>
+        <h1 className="max-w-[42vw] truncate text-sm font-semibold text-text-primary sm:max-w-none sm:text-base">{title}</h1>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <div className="relative hidden sm:block">
           <Search
             size={14}
@@ -170,7 +170,7 @@ export default function Header() {
           </button>
 
           {panelOpen && (
-            <div className="absolute right-0 z-40 mt-2 w-[360px] overflow-hidden rounded-2xl border border-surface-border bg-surface-card shadow-2xl">
+            <div className="absolute right-0 z-40 mt-2 w-[calc(100vw-1rem)] max-w-[360px] overflow-hidden rounded-2xl border border-surface-border bg-surface-card shadow-2xl sm:w-[360px]">
               <div className="flex items-center justify-between border-b border-surface-border px-4 py-3">
                 <div>
                   <p className="font-semibold text-text-primary">Notifications</p>

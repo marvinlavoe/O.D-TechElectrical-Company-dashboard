@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, Users, UserCheck, Briefcase, CheckCircle2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import Avatar from '../../components/ui/Avatar'
 import Drawer from '../../components/ui/Drawer'
+import StatCard from '../../components/ui/StatCard'
 import WorkerForm from './WorkerForm'
 
 export default function WorkersPage() {
@@ -32,13 +33,16 @@ export default function WorkersPage() {
   }
 
   useEffect(() => {
-    fetchWorkers()
+    const timer = setTimeout(() => {
+      fetchWorkers()
+    }, 0)
+
+    return () => clearTimeout(timer)
   }, [])
 
   const handleAdd = async (form) => {
     setSaving(true)
-    
-    // Map the form state to match our Supabase schema
+
     const newWorker = {
       name: form.name,
       spec: form.spec,
@@ -60,45 +64,84 @@ export default function WorkersPage() {
       toast.error(error.message)
     } else {
       toast.success('Worker added successfully')
-      setWorkers(prev => [data[0], ...prev])
+      setWorkers((prev) => [data[0], ...prev])
       setDrawerOpen(false)
     }
   }
 
+  const availableWorkers = workers.filter((worker) => worker.status === 'Available').length
+  const onJobWorkers = workers.filter((worker) => worker.status === 'On Job').length
+  const jobsCompleted = workers.reduce((sum, worker) => sum + Number(worker.jobs_done || 0), 0)
+
   return (
     <div className="space-y-6">
-      {/* ─── Header ─── */}
-      <div className="flex justify-between items-center bg-surface pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-surface pb-2">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Workers & Technicians</h1>
-          <p className="text-sm text-text-muted mt-0.5">{loading ? 'Loading...' : `${workers.length} team members`}</p>
+          <p className="mt-0.5 text-sm text-text-muted">{loading ? 'Loading...' : `${workers.length} team members`}</p>
         </div>
         <Button onClick={() => setDrawerOpen(true)}>
           <Plus size={16} className="mr-2" /> Add Worker
         </Button>
       </div>
 
-      {/* ─── Cards Grid ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {workers.map(w => (
-          <div key={w.id} className="bg-surface-card border border-surface-border rounded-xl p-5 hover:border-primary/50 hover:shadow-sm transition-all">
-            <div className="flex justify-between items-start mb-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Total Workers"
+          value={workers.length}
+          subtitle="Team members on record"
+          icon={Users}
+          color="text-primary"
+        />
+        <StatCard
+          title="Available"
+          value={availableWorkers}
+          subtitle="Ready for assignment"
+          icon={UserCheck}
+          color="text-success"
+        />
+        <StatCard
+          title="On Job"
+          value={onJobWorkers}
+          subtitle="Currently in the field"
+          icon={Briefcase}
+          color="text-info"
+        />
+        <StatCard
+          title="Jobs Completed"
+          value={jobsCompleted}
+          subtitle="Total completed jobs by team"
+          icon={CheckCircle2}
+          color="text-warning"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {workers.map((worker) => (
+          <div
+            key={worker.id}
+            className="rounded-xl border border-surface-border bg-surface-card p-5 transition-all hover:border-primary/50 hover:shadow-sm"
+          >
+            <div className="mb-4 flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <Avatar name={w.name} size="md" />
+                <Avatar name={worker.name} size="md" />
                 <div>
-                  <h3 className="font-semibold text-text-primary text-sm">{w.name}</h3>
-                  <p className="text-xs text-text-secondary mt-0.5">{w.spec}</p>
+                  <h3 className="text-sm font-semibold text-text-primary">{worker.name}</h3>
+                  <p className="mt-0.5 text-xs text-text-secondary">{worker.spec}</p>
                 </div>
               </div>
-              <Badge 
-                label={w.status} 
-                color={w.status === 'Available' ? 'success' : w.status === 'On Job' ? 'info' : 'warning'} 
+              <Badge
+                label={worker.status}
+                color={worker.status === 'Available' ? 'success' : worker.status === 'On Job' ? 'info' : 'warning'}
               />
             </div>
-            
-            <div className="flex items-center justify-between text-sm mt-5 pt-3 border-t border-surface-border">
-              <span className="text-text-muted text-xs">{w.jobs_done || 0} jobs completed</span>
-              <Link to={`/workers/${w.id}`} className="text-primary hover:text-primary-hover font-medium text-xs flex items-center gap-1 transition-colors">
+
+            <div className="mt-5 flex items-center justify-between border-t border-surface-border pt-3 text-sm">
+              <span className="text-xs text-text-muted">{worker.jobs_done || 0} jobs completed</span>
+              <Link
+                to={`/workers/${worker.id}`}
+                className="flex items-center gap-1 text-xs font-medium text-primary transition-colors hover:text-primary-hover"
+              >
                 View Profile
               </Link>
             </div>
@@ -106,7 +149,6 @@ export default function WorkersPage() {
         ))}
       </div>
 
-      {/* ─── Drawer ─── */}
       <Drawer
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}

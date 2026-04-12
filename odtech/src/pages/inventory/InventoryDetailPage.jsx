@@ -128,7 +128,7 @@ export default function InventoryDetailPage() {
   const ST_COLOR = item.status === 'In Stock' ? 'success' : item.status === 'Low Stock' ? 'warning' : 'danger'
   const isLowStock = parseInt(item.qty, 10) <= parseInt(item.threshold, 10)
   const unitProfit = Number(item.selling_price || 0) - Number(item.cost || 0)
-  const potentialProfit = unitProfit * Number(item.qty || 0)
+  const expectedGrossProfit = unitProfit * Number(item.qty || 0)
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -200,7 +200,7 @@ export default function InventoryDetailPage() {
               <InfoRow icon={ShoppingCart} label="Default Supplier" value={item.supplier} />
               <InfoRow icon={Tag} label="Last Known Cost" value={item.cost ? formatCurrency(item.cost) : null} />
               <InfoRow icon={TrendingUp} label="Selling Price" value={formatCurrency(item.selling_price)} />
-              <InfoRow icon={DollarSign} label="Potential Profit on Stock" value={formatCurrency(potentialProfit)} />
+              <InfoRow icon={DollarSign} label="Expected Gross Profit on Sell-Out" value={formatCurrency(expectedGrossProfit)} />
             </div>
             {item.supplier && (
               <div className="mt-5 pt-4 border-t border-surface-border">

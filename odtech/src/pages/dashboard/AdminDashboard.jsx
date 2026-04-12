@@ -168,7 +168,7 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* ─── Top Stat Cards ─── */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
         <StatCard 
           title="Jobs Today" 
           value={stats.jobsToday.value} 
@@ -214,13 +214,13 @@ export default function AdminDashboard() {
       </div>
 
       {/* ─── Level 2: Charts ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-surface-card border border-surface-border rounded-xl p-5">
-          <div className="flex items-center justify-between mb-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="rounded-xl border border-surface-border bg-surface-card p-4 sm:p-5 lg:col-span-2">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-text-primary">Revenue Timeline</h2>
             <Badge label="Current Month" color="info" />
           </div>
-          <div className="h-72 w-full">
+          <div className="h-64 w-full sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={stats.revenueData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
@@ -236,9 +236,9 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="bg-surface-card border border-surface-border rounded-xl p-5">
+        <div className="rounded-xl border border-surface-border bg-surface-card p-4 sm:p-5">
           <h2 className="text-lg font-semibold text-text-primary mb-6">Job Status Overview</h2>
-          <div className="h-72 w-full">
+          <div className="h-64 w-full sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -265,9 +265,9 @@ export default function AdminDashboard() {
       </div>
 
       {/* ─── Level 3: Lists ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-surface-card border border-surface-border rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-surface-border flex items-center justify-between">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="overflow-hidden rounded-xl border border-surface-border bg-surface-card">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-border px-4 py-4 sm:px-5">
             <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
               <Clock size={18} className="text-primary" /> Recent Jobs
             </h2>
@@ -275,12 +275,12 @@ export default function AdminDashboard() {
           </div>
           <div className="divide-y divide-surface-border">
             {stats.recentJobs.length > 0 ? stats.recentJobs.map(job => (
-              <div key={job.id} onClick={() => navigate(`/jobs/${job.id}`)} className="px-5 py-4 flex items-center justify-between hover:bg-surface transition-colors cursor-pointer">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-semibold text-text-primary truncate max-w-[200px]">{job.title}</span>
+              <div key={job.id} onClick={() => navigate(`/jobs/${job.id}`)} className="flex cursor-pointer flex-col gap-3 px-4 py-4 transition-colors hover:bg-surface sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-sm font-semibold text-text-primary sm:max-w-[220px]">{job.title}</span>
                   <span className="text-xs text-text-muted">{job.customers?.name || 'Walk-in'}</span>
                 </div>
-                <div className="flex flex-col items-end gap-1">
+                <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end sm:gap-1">
                   <Badge label={job.status} color={statusColor[job.status]} />
                   <span className="text-[10px] text-text-muted">{formatDate(job.scheduled_date)}</span>
                 </div>
@@ -291,8 +291,8 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="bg-surface-card border border-surface-border rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-surface-border flex items-center justify-between">
+        <div className="overflow-hidden rounded-xl border border-surface-border bg-surface-card">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-border px-4 py-4 sm:px-5">
             <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
               <Package size={18} className="text-danger" /> Low Stock Alerts
             </h2>
@@ -300,12 +300,12 @@ export default function AdminDashboard() {
           </div>
           <div className="divide-y divide-surface-border">
             {stats.lowStock.length > 0 ? stats.lowStock.map(item => (
-              <div key={item.id} onClick={() => navigate(`/inventory/${item.id}`)} className="px-5 py-4 flex items-center justify-between hover:bg-surface transition-colors cursor-pointer">
-                <div className="flex flex-col gap-0.5">
+              <div key={item.id} onClick={() => navigate(`/inventory/${item.id}`)} className="flex cursor-pointer flex-col gap-3 px-4 py-4 transition-colors hover:bg-surface sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                <div className="flex min-w-0 flex-col gap-0.5">
                   <span className="text-sm font-semibold text-text-primary">{item.name}</span>
                   <span className="text-xs text-text-muted">{item.category}</span>
                 </div>
-                <div className="flex flex-col items-end gap-1">
+                <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end sm:gap-1">
                   <span className="text-sm font-bold text-danger">{item.qty} {item.unit} left</span>
                   <span className="text-[10px] text-text-muted">Min: {item.threshold}</span>
                 </div>

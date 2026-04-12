@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, ClipboardList, Clock3, PlayCircle, CheckCircle2 } from 'lucide-react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -12,6 +12,7 @@ import DataTable from '../../components/ui/DataTable'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import Drawer from '../../components/ui/Drawer'
+import StatCard from '../../components/ui/StatCard'
 import JobForm from './JobForm'
 import {
   buildJobAssignmentPayload,
@@ -21,7 +22,7 @@ import {
 
 export default function JobsPage() {
   const navigate = useNavigate()
-  const [view, setView] = useState('list') // 'list' | 'calendar'
+  const [view, setView] = useState('list')
   const [jobs, setJobs] = useState([])
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -65,7 +66,7 @@ export default function JobsPage() {
   const handleCreate = async (form) => {
     setSaving(true)
     const assignmentPayload = buildJobAssignmentPayload(form)
-    
+
     const { data, error } = await supabase
       .from('jobs')
       .insert([{
@@ -87,7 +88,7 @@ export default function JobsPage() {
       toast.error(error.message)
     } else {
       toast.success('Job scheduled successfully')
-      setJobs(prev => [data[0], ...prev])
+      setJobs((prev) => [data[0], ...prev])
       setDrawerOpen(false)
     }
   }
@@ -121,29 +122,43 @@ export default function JobsPage() {
       key: 'actions',
       header: '',
       render: (_, row) => (
-        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); navigate(`/jobs/${row.id}`) }}>View</Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation()
+            navigate(`/jobs/${row.id}`)
+          }}
+        >
+          View
+        </Button>
       ),
     }
   ]
 
+  const pendingJobs = jobs.filter((job) => job.status === 'Pending').length
+  const inProgressJobs = jobs.filter((job) => job.status === 'In Progress').length
+  const completedJobs = jobs.filter((job) => job.status === 'Completed').length
+  const highPriorityJobs = jobs.filter((job) => job.priority === 'High').length
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center bg-surface pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-surface pb-2">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Jobs & Scheduling</h1>
-          <p className="text-sm text-text-muted mt-0.5">{loading ? 'Loading...' : `${jobs.length} jobs assigned`}</p>
+          <p className="mt-0.5 text-sm text-text-muted">{loading ? 'Loading...' : `${jobs.length} jobs assigned`}</p>
         </div>
-        <div className="flex gap-3 h-10">
-          <div className="flex bg-surface-card p-1 rounded-lg border border-surface-border">
+        <div className="flex h-10 flex-wrap gap-3">
+          <div className="flex rounded-lg border border-surface-border bg-surface-card p-1">
             <button
               onClick={() => setView('list')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${view === 'list' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
+              className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${view === 'list' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
             >
               List
             </button>
             <button
               onClick={() => setView('calendar')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${view === 'calendar' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
+              className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${view === 'calendar' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
             >
               Calendar
             </button>
@@ -154,16 +169,47 @@ export default function JobsPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Total Jobs"
+          value={jobs.length}
+          subtitle={`${highPriorityJobs} high priority`}
+          icon={ClipboardList}
+          color="text-primary"
+        />
+        <StatCard
+          title="Pending"
+          value={pendingJobs}
+          subtitle="Waiting to be started"
+          icon={Clock3}
+          color="text-warning"
+        />
+        <StatCard
+          title="In Progress"
+          value={inProgressJobs}
+          subtitle="Jobs currently underway"
+          icon={PlayCircle}
+          color="text-info"
+        />
+        <StatCard
+          title="Completed"
+          value={completedJobs}
+          subtitle="Finished jobs"
+          icon={CheckCircle2}
+          color="text-success"
+        />
+      </div>
+
       {view === 'list' ? (
         <DataTable data={jobs} columns={columns} />
       ) : (
-        <div className="bg-surface-card rounded-xl border border-surface-border p-5">
+        <div className="rounded-xl border border-surface-border bg-surface-card p-5">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
-            events={jobs.map(job => ({
+            events={jobs.map((job) => ({
               id: job.id,
-              title: `${job.title} — ${job.customers?.name}`,
+              title: `${job.title} - ${job.customers?.name}`,
               start: job.scheduled_date + 'T' + job.scheduled_time,
               color: job.priority === 'High' ? '#ef4444' : job.priority === 'Medium' ? '#f59e0b' : '#10b981',
             }))}
@@ -177,7 +223,6 @@ export default function JobsPage() {
         </div>
       )}
 
-      {/* ─── Drawer ─── */}
       <Drawer
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -190,7 +235,6 @@ export default function JobsPage() {
           loading={saving}
         />
       </Drawer>
-
     </div>
   )
 }

@@ -14,6 +14,10 @@ function getUnitProfit(item) {
   return Number(item?.selling_price || 0) - Number(item?.cost || 0)
 }
 
+function getExpectedGrossProfit(item) {
+  return getUnitProfit(item) * Number(item?.qty || 0)
+}
+
 export default function InventoryPage() {
   const navigate = useNavigate()
   const [inventory, setInventory] = useState([])
@@ -96,6 +100,19 @@ export default function InventoryPage() {
         )
       },
       searchValue: row => `${row.cost ?? ''} ${row.selling_price ?? ''}`,
+    },
+    {
+      key: 'expected_gross_profit',
+      header: 'Expected Gross Profit',
+      render: (_, row) => {
+        const grossProfit = getExpectedGrossProfit(row)
+        return (
+          <span className={`font-medium ${grossProfit >= 0 ? 'text-success' : 'text-danger'}`}>
+            {formatCurrency(grossProfit)}
+          </span>
+        )
+      },
+      searchValue: row => String(getExpectedGrossProfit(row)),
     },
     { key: 'threshold', header: 'Threshold' },
     { key: 'status', header: 'Status', render: (val) => (
