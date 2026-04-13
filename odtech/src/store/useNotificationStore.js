@@ -25,8 +25,8 @@ const useNotificationStore = create((set, get) => ({
   togglePanel: () => set((state) => ({ panelOpen: !state.panelOpen })),
   setPanelOpen: (panelOpen) => set({ panelOpen }),
 
-  fetchNotifications: async (profile) => {
-    const userId = profile?.id || null;
+  fetchNotifications: async (profile, currentUser = null) => {
+    const userId = currentUser?.id || profile?.id || null;
 
     if (!userId) {
       set({
@@ -42,7 +42,7 @@ const useNotificationStore = create((set, get) => ({
     set({ loading: true, currentUserId: userId });
 
     try {
-      const notifications = await fetchNotificationFeed(profile);
+      const notifications = await fetchNotificationFeed(profile, currentUser);
       const hydratedNotifications = applyNotificationReadState(
         notifications,
         userId,

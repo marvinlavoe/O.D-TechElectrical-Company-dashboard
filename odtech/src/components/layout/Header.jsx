@@ -45,7 +45,9 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const bellRef = useRef(null);
-  const { profile } = useAuthStore();
+  const { profile, session } = useAuthStore();
+  const currentUser = session?.user || null;
+  const currentUserId = currentUser?.id || null;
   const {
     notifications,
     unreadCount,
@@ -66,23 +68,23 @@ export default function Header() {
 
   useEffect(() => {
     queueMicrotask(() => {
-      fetchNotifications(profile).catch(() => {});
+      fetchNotifications(profile, currentUser).catch(() => {});
     });
 
     const intervalId = window.setInterval(() => {
-      fetchNotifications(profile).catch(() => {});
+      fetchNotifications(profile, currentUser).catch(() => {});
     }, 60000);
 
     return () => window.clearInterval(intervalId);
-  }, [fetchNotifications, profile]);
+  }, [currentUser, fetchNotifications, profile]);
 
   useEffect(() => {
-    if (!profile?.id) {
+    if (!currentUserId) {
       return undefined;
     }
 
     const channel = supabase
-      .channel(`notifications-jobs-${profile.id}`)
+      .channel(`notifications-feed-${currentUserId}`)
       .on(
         "postgres_changes",
         {
@@ -91,7 +93,29 @@ export default function Header() {
           table: "jobs",
         },
         () => {
-          fetchNotifications(profile).catch(() => {});
+          fetchNotifications(profile, currentUser).catch(() => {});
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "jobs",
+        },
+        () => {
+          fetchNotifications(profile, currentUser).catch(() => {});
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+        },
+        () => {
+          fetchNotifications(profile, currentUser).catch(() => {});
         },
       )
       .subscribe();
@@ -99,7 +123,7 @@ export default function Header() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchNotifications, profile]);
+  }, [currentUser, currentUserId, fetchNotifications, profile]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -239,8 +263,8 @@ export default function Header() {
                       No notifications yet
                     </p>
                     <p className="mt-1 text-sm text-text-muted">
-                      New job, sales, billing, and inventory updates will show up
-                      here.
+                      New chat, job, sales, billing, and inventory updates will
+                      show up here.
                     </p>
                   </div>
                 )}

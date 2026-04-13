@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { supabase } from "../../lib/supabase";
+import { useSearchParams } from "react-router-dom";
 import useAuthStore from "../../store/useAuthStore";
 import Avatar from "../../components/ui/Avatar";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
@@ -244,10 +245,12 @@ function ChannelListButton({ channel, selected, onClick }) {
 }
 
 export default function ChatPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { session, profile } = useAuthStore();
   const currentUser = session?.user || null;
   const currentUserId = currentUser?.id || null;
   const currentUserEmail = currentUser?.email || "";
+  const requestedChannelId = searchParams.get("channel");
   const conversationTabs = ["general", "jobs", "direct", "people"];
 
   const [loading, setLoading] = useState(true);
@@ -349,14 +352,27 @@ export default function ChatPage() {
           ...jobChatChannels,
           ...directMessageChannels,
         ];
+        const requestedChannel = requestedChannelId
+          ? availableChannels.find((channel) => channel.id === requestedChannelId)
+          : null;
 
         setSelectedChannelId((previous) => {
           if (previous && availableChannels.some((channel) => channel.id === previous)) {
             return previous;
           }
 
-          return generalChannel?.id || availableChannels[0]?.id || null;
+          return requestedChannel?.id || generalChannel?.id || availableChannels[0]?.id || null;
         });
+
+        if (requestedChannel) {
+          setActiveConversationTab(
+            requestedChannel.type === "job"
+              ? "jobs"
+              : requestedChannel.type === "dm"
+                ? "direct"
+                : "general",
+          );
+        }
       } catch (error) {
         if (ignore) return;
 
@@ -375,7 +391,7 @@ export default function ChatPage() {
     return () => {
       ignore = true;
     };
-  }, [currentUserId]);
+  }, [currentUserId, requestedChannelId]);
 
   useEffect(() => {
     if (!selectedChannelId || !currentUserId) {
@@ -459,6 +475,9 @@ export default function ChatPage() {
   const handleSelectChannel = (channel, tab = "general") => {
     setActiveConversationTab(tab);
     setSelectedChannelId(channel.id);
+    if (requestedChannelId === channel.id) {
+      setSearchParams({}, { replace: true });
+    }
   };
 
   const handleSendMessage = async (event) => {

@@ -1,10 +1,13 @@
 import { supabase } from "./supabase";
 import { normalizeNotificationPreferences } from "./settings";
 import { jobHasAssignedTechnician } from "./jobAssignments";
+import { buildDirectMessageName, getChatUserLabel } from "./chat";
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const MAX_NOTIFICATIONS = 8;
-const ASSIGNED_JOB_LOOKBACK_DAYS = 7;
+const ASSIGNED_JOB_LIMIT = 50;
+const CHAT_LOOKBACK_DAYS = 14;
+const MAX_CHAT_NOTIFICATIONS = 4;
 
 function startOfToday() {
   return new Date(new Date().toDateString());
@@ -37,6 +40,20 @@ function buildNotification({
 
 function normalizeName(value = "") {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function truncateNotificationText(value = "", maxLength = 88) {
+  const normalized = value.trim().replace(/\s+/g, " ");
+
+  if (!normalized) {
+    return "Sent an attachment";
+  }
+
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 1)}...`;
 }
 
 export function getNotificationStorageKey(userId) {
@@ -134,12 +151,12 @@ function buildJobNotifications(jobsToday, overdueJobs, preferences) {
   return notifications;
 }
 
-async function findWorkerForProfile(profile) {
+async function findWorkerForProfile(profile, currentUser = null) {
   if (!profile) {
     return null;
   }
 
-  const email = profile.email?.trim();
+  const email = profile.email?.trim() || currentUser?.email?.trim();
   const fullName = normalizeName(profile.full_name);
 
   if (email) {
@@ -189,6 +206,69 @@ function buildAssignedJobNotifications(assignedJobs, preferences) {
       createdAt: job.created_at,
     });
   });
+}
+
+function buildChatNotifications(unreadMessages, channels, senderProfiles) {
+  if (unreadMessages.length === 0) {
+    return [];
+  }
+
+  const channelsById = Object.fromEntries(
+    (channels || []).map((channel) => [channel.id, channel]),
+  );
+  const senderProfilesById = Object.fromEntries(
+    (senderProfiles || []).map((senderProfile) => [senderProfile.id, senderProfile]),
+  );
+  const latestMessageByChannel = new Map();
+
+  for (const message of unreadMessages) {
+    const existing = latestMessageByChannel.get(message.channel_id);
+
+    if (!existing) {
+      latestMessageByChannel.set(message.channel_id, {
+        latestMessage: message,
+        unreadCount: 1,
+      });
+      continue;
+    }
+
+    existing.unreadCount += 1;
+  }
+
+  return Array.from(latestMessageByChannel.entries())
+    .map(([channelId, entry]) => {
+      const channel = channelsById[channelId] || null;
+      const latestMessage = entry.latestMessage;
+      const senderProfile = senderProfilesById[latestMessage.sender_id] || null;
+      const senderName = getChatUserLabel(senderProfile, "Teammate");
+      const chatName =
+        channel?.type === "dm"
+          ? buildDirectMessageName(senderProfile)
+          : channel?.name || "Chat";
+      const preview = truncateNotificationText(latestMessage.content || "");
+
+      return buildNotification({
+        id: `chat-${channelId}-${latestMessage.id}`,
+        category: "chat",
+        level: "info",
+        title:
+          channel?.type === "dm"
+            ? `New message from ${senderName}`
+            : `New message in ${chatName}`,
+        message:
+          entry.unreadCount > 1
+            ? `${entry.unreadCount} unread messages. Latest: ${preview}`
+            : preview,
+        href: `/chat?channel=${channelId}`,
+        createdAt: latestMessage.created_at,
+      });
+    })
+    .sort(
+      (left, right) =>
+        new Date(right.created_at || 0).getTime() -
+        new Date(left.created_at || 0).getTime(),
+    )
+    .slice(0, MAX_CHAT_NOTIFICATIONS);
 }
 
 function buildCustomerNotifications(customers, preferences) {
@@ -315,20 +395,21 @@ function buildSalesNotifications(salesToday, preferences) {
   ];
 }
 
-export async function fetchNotificationFeed(profile) {
+export async function fetchNotificationFeed(profile, currentUser = null) {
   const preferences = normalizeNotificationPreferences(
     profile?.notification_preferences,
   );
   const isAdmin = profile?.role === "admin";
+  const currentUserId = currentUser?.id || profile?.id || null;
   const today = startOfToday();
   const todayString = isoDate(today);
   const recentCustomerStart = isoDate(
     new Date(today.getTime() - 3 * DAY_IN_MS),
   );
-  const assignedJobStart = new Date(
-    today.getTime() - ASSIGNED_JOB_LOOKBACK_DAYS * DAY_IN_MS,
+  const unreadChatStart = new Date(
+    today.getTime() - CHAT_LOOKBACK_DAYS * DAY_IN_MS,
   ).toISOString();
-  const worker = await findWorkerForProfile(profile);
+  const worker = await findWorkerForProfile(profile, currentUser);
 
   const [
     jobsTodayResponse,
@@ -339,6 +420,7 @@ export async function fetchNotificationFeed(profile) {
     overdueInvoicesResponse,
     receiptsTodayResponse,
     salesTodayResponse,
+    unreadMessagesResponse,
   ] = await Promise.all([
     supabase
       .from("jobs")
@@ -356,9 +438,8 @@ export async function fetchNotificationFeed(profile) {
       ? supabase
           .from("jobs")
           .select("id, title, created_at, scheduled_date, customers(name), technician_id, technician_ids")
-          .gte("created_at", assignedJobStart)
           .order("created_at", { ascending: false })
-          .limit(20)
+          .limit(ASSIGNED_JOB_LIMIT)
       : Promise.resolve({ data: [], error: null }),
     supabase
       .from("customers")
@@ -388,6 +469,14 @@ export async function fetchNotificationFeed(profile) {
       .select("id, total_amount, sale_date, created_at")
       .eq("sale_date", todayString)
       .order("created_at", { ascending: false }),
+    currentUserId
+      ? supabase
+          .from("messages")
+          .select("id, channel_id, sender_id, content, attachment_url, seen_by, created_at")
+          .gte("created_at", unreadChatStart)
+          .order("created_at", { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   const responses = [
@@ -399,6 +488,7 @@ export async function fetchNotificationFeed(profile) {
     overdueInvoicesResponse,
     receiptsTodayResponse,
     salesTodayResponse,
+    unreadMessagesResponse,
   ];
 
   const firstError = responses.find((response) => response.error)?.error;
@@ -406,7 +496,44 @@ export async function fetchNotificationFeed(profile) {
     throw firstError;
   }
 
+  const unreadMessages = (unreadMessagesResponse.data || []).filter(
+    (message) =>
+      message.sender_id !== currentUserId &&
+      !((message.seen_by || []).includes(currentUserId)),
+  );
+
+  const uniqueChannelIds = [...new Set(unreadMessages.map((message) => message.channel_id))];
+  const uniqueSenderIds = [...new Set(unreadMessages.map((message) => message.sender_id))];
+
+  const [channelsResponse, senderProfilesResponse] = await Promise.all([
+    uniqueChannelIds.length
+      ? supabase
+          .from("channels")
+          .select("id, name, type, job_id, created_at")
+          .in("id", uniqueChannelIds)
+      : Promise.resolve({ data: [], error: null }),
+    uniqueSenderIds.length
+      ? supabase
+          .from("profiles")
+          .select("id, full_name, email, role")
+          .in("id", uniqueSenderIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (channelsResponse.error) {
+    throw channelsResponse.error;
+  }
+
+  if (senderProfilesResponse.error) {
+    throw senderProfilesResponse.error;
+  }
+
   const notifications = [
+    ...buildChatNotifications(
+      unreadMessages,
+      channelsResponse.data || [],
+      senderProfilesResponse.data || [],
+    ),
     ...buildJobNotifications(
       jobsTodayResponse.data || [],
       overdueJobsResponse.data || [],

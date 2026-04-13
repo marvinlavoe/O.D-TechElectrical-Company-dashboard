@@ -12,12 +12,16 @@ import Button from '../../components/ui/Button'
 import Drawer from '../../components/ui/Drawer'
 import JobForm from './JobForm'
 import { formatDate } from '../../lib/utils'
+import useAuthStore from '../../store/useAuthStore'
 import {
   buildJobAssignmentPayload,
   createWorkerLookup,
   formatAssignedTechnicians,
   getAssignedTechnicianIds,
+  jobHasAssignedTechnician,
 } from '../../lib/jobAssignments'
+import { updateJobStatusAndAssignedWorkers } from '../../lib/jobStatus'
+import { findWorkerForUser } from '../../lib/workerIdentity'
 
 const STATUS_COLOR = {
   Pending: 'warning',
@@ -65,11 +69,14 @@ function SectionCard({ title, action, children }) {
 
 export default function JobDetailPage() {
   const { id } = useParams()
+  const { profile, session } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [editOpen, setEditOpen] = useState(false)
   const [job, setJob] = useState(null)
   const [tasks, setTasks] = useState([])
   const [workersById, setWorkersById] = useState({})
+  const [currentWorker, setCurrentWorker] = useState(null)
+  const [statusUpdating, setStatusUpdating] = useState(false)
 
   const fetchJobData = useCallback(async () => {
     setLoading(true)
@@ -94,6 +101,7 @@ export default function JobDetailPage() {
       if (workersError) throw workersError
       setJob(jobData)
       setWorkersById(createWorkerLookup(workersData || []))
+      setCurrentWorker(await findWorkerForUser(profile, session?.user))
 
       // Fetch tasks / checklist
       const { data: tasksData } = await supabase
@@ -109,7 +117,7 @@ export default function JobDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, profile, session])
 
   useEffect(() => {
     fetchJobData()
@@ -142,16 +150,23 @@ export default function JobDetailPage() {
   }
 
   const updateStatus = async (newStatus) => {
-    const { error } = await supabase
-      .from('jobs')
-      .update({ status: newStatus })
-      .eq('id', id)
+    if (!job || statusUpdating) return
 
-    if (error) {
-      toast.error(error.message)
-    } else {
-      toast.success(`Status updated to ${newStatus}`)
+    setStatusUpdating(true)
+
+    try {
+      await updateJobStatusAndAssignedWorkers(job, newStatus)
+      toast.success(
+        newStatus === 'In Progress'
+          ? 'Job started and assigned workers moved to On Job'
+          : 'Job completed and worker availability refreshed',
+      )
       setJob(prev => ({ ...prev, status: newStatus }))
+      fetchJobData()
+    } catch (error) {
+      toast.error(error.message || 'Failed to update job status')
+    } finally {
+      setStatusUpdating(false)
     }
   }
 
@@ -177,6 +192,10 @@ export default function JobDetailPage() {
   const assignedTechnicians = formatAssignedTechnicians(job, workersById)
   const googleMapsDirectionsUrl = getGoogleMapsDirectionsUrl(job.location)
   const googleMapsEmbedUrl = getGoogleMapsEmbedUrl(job.location)
+  const canEditJob = profile?.role === 'admin'
+  const canManageStatus =
+    profile?.role === 'admin' ||
+    (currentWorker && jobHasAssignedTechnician(job, currentWorker.id))
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -196,20 +215,22 @@ export default function JobDetailPage() {
             <p className="text-sm text-text-muted">Job ID: #{job.id} • Scheduled for {formatDate(job.scheduled_date)} at {job.scheduled_time}</p>
           </div>
           <div className="flex gap-2 flex-shrink-0">
-            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-              <Edit2 size={14} /> Edit Job
-            </Button>
-            {job.status === 'Pending' && (
-              <Button size="sm" onClick={() => updateStatus('In Progress')}>
+            {canEditJob && (
+              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                <Edit2 size={14} /> Edit Job
+              </Button>
+            )}
+            {canManageStatus && job.status === 'Pending' && (
+              <Button size="sm" onClick={() => updateStatus('In Progress')} disabled={statusUpdating}>
                 <PlayCircle size={14} /> Start Job
               </Button>
             )}
-            {job.status === 'In Progress' && (
-              <Button size="sm" color="success" onClick={() => updateStatus('Completed')}>
+            {canManageStatus && job.status === 'In Progress' && (
+              <Button size="sm" color="success" onClick={() => updateStatus('Completed')} disabled={statusUpdating}>
                 <CheckCircle size={14} /> Mark Completed
               </Button>
             )}
-            {job.status === 'Completed' && (
+            {canEditJob && job.status === 'Completed' && (
               <Button size="sm" variant="outline">
                 <FileText size={14} /> Create Invoice
               </Button>
