@@ -16,6 +16,7 @@ const PAGE_TITLES = {
   "/inventory": "Inventory",
   "/sales": "Sales",
   "/merchant-hub": "Merchant Hub",
+  "/module-access": "Module Access",
   "/billing": "Billing & Quotations",
   "/reports": "Reports & Analytics",
   "/chat": "Messages",

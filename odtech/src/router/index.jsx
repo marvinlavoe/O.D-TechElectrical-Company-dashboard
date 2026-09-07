@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import ProtectedRoute from './ProtectedRoute'
 import AdminRoute from './AdminRoute'
+import ModuleRoute from './ModuleRoute'
 import AppLayout from '../components/layout/AppLayout'
 import AuthLayout from '../components/layout/AuthLayout'
 
@@ -34,6 +35,7 @@ import ReceiptsPage  from '../pages/receipts/ReceiptsPage'
 import ReportsPage   from '../pages/reports/ReportsPage'
 import SalesPage     from '../pages/sales/SalesPage'
 import MerchantHubPage from '../pages/merchant-hub/MerchantHubPage'
+import ModuleAccessPage from '../pages/admin/ModuleAccessPage'
 import ChatPage      from '../pages/chat/ChatPage'
 import SettingsPage  from '../pages/settings/SettingsPage'
 
@@ -66,8 +68,9 @@ const router = createBrowserRouter([
       { path: '/workers/:id',            element: <AdminRoute><WorkerDetailPage /></AdminRoute> },
       { path: '/inventory',              element: <AdminRoute><InventoryPage /></AdminRoute> },
       { path: '/inventory/:id',          element: <AdminRoute><InventoryDetailPage /></AdminRoute> },
-      { path: '/sales',                  element: <AdminRoute><SalesPage /></AdminRoute> },
-      { path: '/merchant-hub',           element: <AdminRoute><MerchantHubPage /></AdminRoute> },
+      { path: '/sales',                  element: <ModuleRoute moduleKey="sales"><SalesPage /></ModuleRoute> },
+      { path: '/merchant-hub',           element: <ModuleRoute moduleKey="merchant_hub"><MerchantHubPage /></ModuleRoute> },
+      { path: '/module-access',          element: <AdminRoute><ModuleAccessPage /></AdminRoute> },
       { path: '/billing',                element: <AdminRoute><BillingPage /></AdminRoute> },
       { path: '/receipts',               element: <AdminRoute><ReceiptsPage /></AdminRoute> },
       { path: '/reports',                element: <AdminRoute><ReportsPage /></AdminRoute> },

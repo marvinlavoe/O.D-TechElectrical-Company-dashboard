@@ -1,13 +1,18 @@
 import { create } from "zustand";
 import { supabase } from "../lib/supabase";
+import { MODULES, getUserRole } from "../lib/authRoutes";
+
+const ALL_MODULE_KEYS = Object.keys(MODULES);
 
 const useAuthStore = create((set) => ({
   session: null,
   profile: null,
+  moduleAccess: [],
   loading: true,
 
   setSession: (session) => set({ session }),
   setProfile: (profile) => set({ profile }),
+  setModuleAccess: (moduleAccess) => set({ moduleAccess }),
   setLoading: (loading) => set({ loading }),
 
   fetchProfile: async (userId) => {
@@ -53,9 +58,51 @@ const useAuthStore = create((set) => ({
     }
   },
 
+  fetchModuleAccess: async (email, profile = null, user = null) => {
+    if (getUserRole(profile, user) === "admin") {
+      set({ moduleAccess: ALL_MODULE_KEYS });
+      return ALL_MODULE_KEYS;
+    }
+
+    const normalizedEmail = email?.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      set({ moduleAccess: [] });
+      return [];
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("module_access_grants")
+        .select("modules, is_active")
+        .eq("email", normalizedEmail)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (error) {
+        if (error.code !== "PGRST116") {
+          console.warn("Module access fetch error:", error);
+        }
+
+        set({ moduleAccess: [] });
+        return [];
+      }
+
+      const moduleAccess = (data?.modules || []).filter(
+        (moduleKey) => MODULES[moduleKey],
+      );
+      set({ moduleAccess });
+      return moduleAccess;
+    } catch (error) {
+      console.error("Module access fetch exception:", error);
+      set({ moduleAccess: [] });
+      return [];
+    }
+  },
+
   logout: async () => {
     await supabase.auth.signOut();
-    set({ session: null, profile: null });
+    set({ session: null, profile: null, moduleAccess: [] });
   },
 }));
 

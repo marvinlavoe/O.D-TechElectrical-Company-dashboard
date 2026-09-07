@@ -28,11 +28,22 @@ alter table public.channels
   add column if not exists job_id uuid,
   add column if not exists created_by uuid;
 
-update public.channels
-set job_id = reference_id
-where job_id is null
-  and type = 'job'
-  and reference_id is not null;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'channels'
+      and column_name = 'reference_id'
+  ) then
+    update public.channels
+    set job_id = reference_id
+    where job_id is null
+      and type = 'job'
+      and reference_id is not null;
+  end if;
+end $$;
 
 alter table public.channels
   alter column created_at set default timezone('utc', now());

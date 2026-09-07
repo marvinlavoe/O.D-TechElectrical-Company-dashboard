@@ -12,9 +12,12 @@ import DataTable from "../../components/ui/DataTable";
 import Button from "../../components/ui/Button";
 import Drawer from "../../components/ui/Drawer";
 import Input from "../../components/ui/Input";
+import Select from "../../components/ui/Select";
 import StatCard from "../../components/ui/StatCard";
 import { formatCurrency, formatDate } from "../../lib/utils";
 import MerchantHubForm from "./MerchantHubForm";
+import useAuthStore from "../../store/useAuthStore";
+import { getUserRole } from "../../lib/authRoutes";
 
 function getTodayDate() {
   return new Date().toISOString().split("T")[0];
@@ -51,8 +54,12 @@ function getEntryStats(entry) {
 }
 
 export default function MerchantHubPage() {
+  const { session, profile } = useAuthStore();
+  const currentUserId = session?.user?.id || null;
+  const isAdmin = getUserRole(profile, session?.user) === "admin";
   const [entries, setEntries] = useState([]);
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
+  const [selectedUserId, setSelectedUserId] = useState("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -63,7 +70,7 @@ export default function MerchantHubPage() {
     try {
       const { data, error } = await supabase
         .from("merchant_hub_entries")
-        .select("*, merchant_hub_entry_extras(*)")
+        .select("*, merchant_hub_entry_extras(*), created_by_profile:profiles!merchant_hub_entries_created_by_fkey(full_name, email)")
         .order("entry_date", { ascending: false })
         .limit(60);
 
@@ -84,16 +91,89 @@ export default function MerchantHubPage() {
     fetchEntries();
   }, []);
 
-  const selectedEntry = useMemo(
-    () => entries.find((entry) => entry.entry_date === selectedDate) || null,
-    [entries, selectedDate],
+  const userOptions = useMemo(() => {
+    const usersById = new Map();
+
+    entries.forEach((entry) => {
+      if (!entry.created_by || usersById.has(entry.created_by)) return;
+
+      usersById.set(entry.created_by, {
+        value: entry.created_by,
+        label:
+          entry.created_by_profile?.full_name ||
+          entry.created_by_profile?.email ||
+          "Unknown user",
+      });
+    });
+
+    return [
+      { value: "all", label: "All users" },
+      ...Array.from(usersById.values()).sort((a, b) =>
+        a.label.localeCompare(b.label),
+      ),
+    ];
+  }, [entries]);
+
+  const filteredEntries = useMemo(() => {
+    if (!isAdmin || selectedUserId === "all") {
+      return entries;
+    }
+
+    return entries.filter((entry) => entry.created_by === selectedUserId);
+  }, [entries, isAdmin, selectedUserId]);
+
+  const selectedDateEntries = useMemo(
+    () => filteredEntries.filter((entry) => entry.entry_date === selectedDate),
+    [filteredEntries, selectedDate],
   );
 
-  const stats = useMemo(() => getEntryStats(selectedEntry), [selectedEntry]);
+  const ownSelectedEntry = useMemo(
+    () =>
+      entries.find(
+        (entry) =>
+          entry.entry_date === selectedDate && entry.created_by === currentUserId,
+      ) || null,
+    [currentUserId, entries, selectedDate],
+  );
+
+  const stats = useMemo(
+    () =>
+      selectedDateEntries.reduce(
+        (total, entry) => {
+          const entryStats = getEntryStats(entry);
+
+          return {
+            physicalCommission:
+              total.physicalCommission + entryStats.physicalCommission,
+            physicalCashCapital:
+              total.physicalCashCapital + entryStats.physicalCashCapital,
+            electronicCommission:
+              total.electronicCommission + entryStats.electronicCommission,
+            electronicCashCapital:
+              total.electronicCashCapital + entryStats.electronicCashCapital,
+            extrasTotal: total.extrasTotal + entryStats.extrasTotal,
+            totalCommission:
+              total.totalCommission + entryStats.totalCommission,
+            grandTotal: total.grandTotal + entryStats.grandTotal,
+          };
+        },
+        getEntryStats(null),
+      ),
+    [selectedDateEntries],
+  );
+  const selectedExtrasCount = useMemo(
+    () =>
+      selectedDateEntries.reduce(
+        (sum, entry) => sum + (entry.extras?.length || 0),
+        0,
+      ),
+    [selectedDateEntries],
+  );
 
   const handleSave = async (form) => {
     const isUpdatingExistingDate = entries.some(
-      (entry) => entry.entry_date === form.entry_date,
+      (entry) =>
+        entry.entry_date === form.entry_date && entry.created_by === currentUserId,
     );
 
     setSaving(true);
@@ -137,6 +217,17 @@ export default function MerchantHubPage() {
       header: "Date",
       render: (value) => formatDate(value),
     },
+    ...(isAdmin
+      ? [
+          {
+            key: "created_by_profile",
+            header: "User",
+            render: (value) => value?.full_name || value?.email || "Unknown",
+            searchValue: (row) =>
+              `${row.created_by_profile?.full_name || ""} ${row.created_by_profile?.email || ""}`,
+          },
+        ]
+      : []),
     {
       key: "physical_commission",
       header: "Physical Comm.",
@@ -167,6 +258,7 @@ export default function MerchantHubPage() {
   ];
 
   const selectedDateLabel = formatDate(selectedDate, "long");
+  const canEditOwnEntry = selectedUserId === "all" || selectedUserId === currentUserId;
 
   return (
     <div className="space-y-6">
@@ -178,11 +270,24 @@ export default function MerchantHubPage() {
           <p className="mt-0.5 text-sm text-text-muted">
             {loading
               ? "Loading mobile money summaries..."
-              : "Track daily physical and electronic merchant balances in one place"}
+              : isAdmin
+                ? "Track daily merchant balances across all allowed users"
+                : "Track your daily physical and electronic merchant balances"}
           </p>
         </div>
 
         <div className="flex flex-wrap items-end gap-3">
+          {isAdmin && (
+            <div className="w-full sm:w-[220px]">
+              <Select
+                label="User"
+                value={selectedUserId}
+                onChange={(event) => setSelectedUserId(event.target.value)}
+                options={userOptions}
+                placeholder=""
+              />
+            </div>
+          )}
           <div className="w-full sm:w-[220px]">
             <Input
               label="Selected Day"
@@ -191,9 +296,9 @@ export default function MerchantHubPage() {
               onChange={(event) => setSelectedDate(event.target.value)}
             />
           </div>
-          <Button onClick={() => setDrawerOpen(true)}>
+          <Button onClick={() => setDrawerOpen(true)} disabled={!canEditOwnEntry}>
             <Plus size={16} className="mr-2" />
-            {selectedEntry ? "Edit Day" : "Record Day"}
+            {ownSelectedEntry ? "Edit My Day" : "Record My Day"}
           </Button>
         </div>
       </div>
@@ -208,14 +313,14 @@ export default function MerchantHubPage() {
               {selectedDateLabel}
             </p>
             <p className="text-sm text-text-muted">
-              {selectedEntry
-                ? "Daily merchant figures loaded for editing and review."
+              {selectedDateEntries.length
+                ? `${selectedDateEntries.length} saved summar${selectedDateEntries.length === 1 ? "y" : "ies"} loaded for review.`
                 : "No saved summary yet for this date."}
             </p>
           </div>
-          {selectedEntry && (
+          {selectedDateEntries.length > 0 && (
             <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              Existing Entry
+              Existing
             </div>
           )}
         </div>
@@ -246,7 +351,7 @@ export default function MerchantHubPage() {
         <StatCard
           title="Extras Total"
           value={formatCurrency(stats.extrasTotal)}
-          subtitle={`${selectedEntry?.extras?.length || 0} extra row${selectedEntry?.extras?.length === 1 ? "" : "s"}`}
+          subtitle={`${selectedExtrasCount} extra row${selectedExtrasCount === 1 ? "" : "s"}`}
           icon={Plus}
           color="text-warning"
         />
@@ -272,12 +377,18 @@ export default function MerchantHubPage() {
         </div>
 
         <DataTable
-          data={entries}
+          data={filteredEntries}
           columns={columns}
           loading={loading}
           onRowClick={(row) => {
             setSelectedDate(row.entry_date);
-            setDrawerOpen(true);
+            if (isAdmin) {
+              setSelectedUserId(row.created_by);
+            }
+
+            if (row.created_by === currentUserId) {
+              setDrawerOpen(true);
+            }
           }}
         />
       </div>
@@ -285,13 +396,13 @@ export default function MerchantHubPage() {
       <Drawer
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        title={selectedEntry ? "Update Merchant Day" : "Record Merchant Day"}
+        title={ownSelectedEntry ? "Update Merchant Day" : "Record Merchant Day"}
         width="w-full md:w-[760px]"
       >
         <MerchantHubForm
-          key={`merchant-hub-form-${selectedDate}-${selectedEntry?.id || "new"}`}
+          key={`merchant-hub-form-${selectedDate}-${ownSelectedEntry?.id || "new"}`}
           initialDate={selectedDate}
-          initialData={selectedEntry}
+          initialData={ownSelectedEntry}
           onSubmit={handleSave}
           onCancel={() => setDrawerOpen(false)}
           loading={saving}

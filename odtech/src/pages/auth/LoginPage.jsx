@@ -1,17 +1,20 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { setRememberSession, supabase } from "../../lib/supabase";
 import toast from "react-hot-toast";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import { getDefaultRoute, getUserRole } from "../../lib/authRoutes";
+import useAuthStore from "../../store/useAuthStore";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const fetchModuleAccess = useAuthStore((state) => state.fetchModuleAccess);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -24,6 +27,7 @@ export default function LoginPage() {
     }
 
     setLoading(true);
+    setRememberSession(rememberMe);
 
     const loginWithRetry = async () => {
       const maxAttempts = 3;
@@ -113,7 +117,9 @@ export default function LoginPage() {
         console.warn("Profile handling failed:", profileErr);
       }
 
-      navigate(getDefaultRoute(profile, user), { replace: true });
+      const moduleAccess = await fetchModuleAccess(user.email, profile, user);
+
+      navigate(getDefaultRoute(profile, user, moduleAccess), { replace: true });
     } catch (err) {
       console.error("Login error:", err);
       toast.error(err.message || "Login failed.");
@@ -145,6 +151,16 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+
+        <label className="flex items-center gap-2 text-sm text-text-secondary">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(event) => setRememberMe(event.target.checked)}
+            className="h-4 w-4 rounded border-surface-border bg-surface text-primary focus:ring-primary/40"
+          />
+          Remember me on this device
+        </label>
 
         <Button
           type="submit"

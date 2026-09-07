@@ -20,23 +20,26 @@ async function syncAuthState(session) {
   store.setSession(session);
 
   if (session?.user) {
-    await store.fetchProfile(session.user.id);
+    const profile = await store.fetchProfile(session.user.id);
+    await store.fetchModuleAccess(session.user.email, profile, session.user);
   } else {
     store.setProfile(null);
+    store.setModuleAccess([]);
   }
 
   store.setLoading(false);
 }
 
-supabase.auth.onAuthStateChange(async (_event, session) => {
-  try {
-    await syncAuthState(session);
-  } catch (error) {
-    console.error("Auth state sync failed:", error);
-    const store = useAuthStore.getState();
-    store.setProfile(null);
-    store.setLoading(false);
-  }
+supabase.auth.onAuthStateChange((_event, session) => {
+  setTimeout(() => {
+    syncAuthState(session).catch((error) => {
+      console.error("Auth state sync failed:", error);
+      const store = useAuthStore.getState();
+      store.setProfile(null);
+      store.setModuleAccess([]);
+      store.setLoading(false);
+    });
+  }, 0);
 });
 
 supabase.auth
@@ -50,6 +53,7 @@ supabase.auth
     const store = useAuthStore.getState();
     store.setSession(null);
     store.setProfile(null);
+    store.setModuleAccess([]);
     store.setLoading(false);
   });
 

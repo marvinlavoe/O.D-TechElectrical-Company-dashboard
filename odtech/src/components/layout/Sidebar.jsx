@@ -7,6 +7,7 @@ import {
   Package,
   ShoppingCart,
   Smartphone,
+  ShieldCheck,
   FileText,
   MessageSquare,
   Settings,
@@ -18,7 +19,11 @@ import {
 import useAuthStore from "../../store/useAuthStore";
 import useSidebarStore from "../../store/useSidebarStore";
 import Avatar from "../ui/Avatar";
-import { getDefaultRoute, getUserRole } from "../../lib/authRoutes";
+import {
+  getDefaultRoute,
+  getUserRole,
+  userHasModuleAccess,
+} from "../../lib/authRoutes";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", dynamicDashboard: true },
@@ -26,8 +31,9 @@ const NAV_ITEMS = [
   { to: "/jobs", icon: Briefcase, label: "Jobs" },
   { to: "/workers", icon: HardHat, label: "Workers", adminOnly: true },
   { to: "/inventory", icon: Package, label: "Inventory", adminOnly: true },
-  { to: "/sales", icon: ShoppingCart, label: "Sales", adminOnly: true },
-  { to: "/merchant-hub", icon: Smartphone, label: "Merchant Hub", adminOnly: true },
+  { to: "/sales", icon: ShoppingCart, label: "Sales", moduleKey: "sales" },
+  { to: "/merchant-hub", icon: Smartphone, label: "Merchant Hub", moduleKey: "merchant_hub" },
+  { to: "/module-access", icon: ShieldCheck, label: "Module Access", adminOnly: true },
   { to: "/billing", icon: CreditCard, label: "Billing", adminOnly: true },
   { to: "/receipts", icon: FileText, label: "Receipts", adminOnly: true },
   { to: "/reports", icon: FileText, label: "Reports", adminOnly: true },
@@ -36,13 +42,13 @@ const NAV_ITEMS = [
 ];
 
 export default function Sidebar() {
-  const { session, profile, logout } = useAuthStore();
+  const { session, profile, moduleAccess, logout } = useAuthStore();
   const navigate = useNavigate();
   const { isCollapsed, isMobileOpen, closeMobile } = useSidebarStore();
 
   const role = getUserRole(profile, session?.user);
   const isAdmin = role === "admin";
-  const dashboardRoute = getDefaultRoute(profile, session?.user);
+  const dashboardRoute = getDefaultRoute(profile, session?.user, moduleAccess);
 
   const handleLogout = async () => {
     await logout();
@@ -50,7 +56,19 @@ export default function Sidebar() {
   };
 
   const visible = NAV_ITEMS
-    .filter((item) => !item.adminOnly || isAdmin)
+    .filter((item) => {
+      if (item.adminOnly && !isAdmin) return false;
+      if (item.moduleKey) {
+        return userHasModuleAccess(
+          item.moduleKey,
+          profile,
+          session?.user,
+          moduleAccess,
+        );
+      }
+
+      return true;
+    })
     .map((item) => ({
       ...item,
       to: item.dynamicDashboard ? dashboardRoute : item.to,

@@ -5,9 +5,12 @@ import toast from "react-hot-toast";
 import DataTable from "../../components/ui/DataTable";
 import Button from "../../components/ui/Button";
 import Drawer from "../../components/ui/Drawer";
+import Select from "../../components/ui/Select";
 import StatCard from "../../components/ui/StatCard";
 import { formatCurrency, formatDate } from "../../lib/utils";
 import SalesForm from "./SalesForm";
+import useAuthStore from "../../store/useAuthStore";
+import { getUserRole } from "../../lib/authRoutes";
 
 function getTodayDate() {
   return new Date().toISOString().split("T")[0];
@@ -39,10 +42,13 @@ function getSaleProfit(sale, inventoryCostMap = new Map()) {
 }
 
 export default function SalesPage() {
+  const { session, profile } = useAuthStore();
+  const isAdmin = getUserRole(profile, session?.user) === "admin";
   const [sales, setSales] = useState([]);
   const [todaySales, setTodaySales] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -61,12 +67,12 @@ export default function SalesPage() {
       ] = await Promise.all([
         supabase
           .from("sales")
-          .select("*, customers(name), sale_items(*)")
+          .select("*, customers(name), sale_items(*), created_by_profile:profiles!sales_created_by_fkey(full_name, email)")
           .order("created_at", { ascending: false })
           .limit(50),
         supabase
           .from("sales")
-          .select("id, total_amount, sale_items(*)")
+          .select("id, total_amount, created_by, sale_items(*)")
           .eq("sale_date", today),
         supabase
           .from("inventory")
@@ -115,13 +121,52 @@ export default function SalesPage() {
     [inventoryItems],
   );
 
+  const userOptions = useMemo(() => {
+    const usersById = new Map();
+
+    sales.forEach((sale) => {
+      if (!sale.created_by || usersById.has(sale.created_by)) return;
+
+      usersById.set(sale.created_by, {
+        value: sale.created_by,
+        label:
+          sale.created_by_profile?.full_name ||
+          sale.created_by_profile?.email ||
+          "Unknown user",
+      });
+    });
+
+    return [
+      { value: "all", label: "All users" },
+      ...Array.from(usersById.values()).sort((a, b) =>
+        a.label.localeCompare(b.label),
+      ),
+    ];
+  }, [sales]);
+
+  const filteredSales = useMemo(() => {
+    if (!isAdmin || selectedUserId === "all") {
+      return sales;
+    }
+
+    return sales.filter((sale) => sale.created_by === selectedUserId);
+  }, [isAdmin, sales, selectedUserId]);
+
+  const filteredTodaySales = useMemo(() => {
+    if (!isAdmin || selectedUserId === "all") {
+      return todaySales;
+    }
+
+    return todaySales.filter((sale) => sale.created_by === selectedUserId);
+  }, [isAdmin, selectedUserId, todaySales]);
+
   const stats = useMemo(() => {
-    const totalSales = todaySales.reduce(
+    const totalSales = filteredTodaySales.reduce(
       (sum, sale) => sum + Number(sale.total_amount || 0),
       0,
     );
-    const transactions = todaySales.length;
-    const itemsSold = todaySales.reduce((sum, sale) => {
+    const transactions = filteredTodaySales.length;
+    const itemsSold = filteredTodaySales.reduce((sum, sale) => {
       const quantity = (sale.sale_items || []).reduce(
         (lineSum, item) => lineSum + Number(item.quantity || 0),
         0,
@@ -130,7 +175,7 @@ export default function SalesPage() {
       return sum + quantity;
     }, 0);
 
-    const totalProfit = todaySales.reduce(
+    const totalProfit = filteredTodaySales.reduce(
       (sum, sale) => sum + getSaleProfit(sale, inventoryCostMap),
       0,
     );
@@ -142,7 +187,7 @@ export default function SalesPage() {
       totalProfit,
       averageSale: transactions ? totalSales / transactions : 0,
     };
-  }, [todaySales, inventoryCostMap]);
+  }, [filteredTodaySales, inventoryCostMap]);
 
   const handleCreateSale = async (form) => {
     setSaving(true);
@@ -175,6 +220,17 @@ export default function SalesPage() {
 
   const columns = [
     { key: "sale_number", header: "Sale #" },
+    ...(isAdmin
+      ? [
+          {
+            key: "created_by_profile",
+            header: "User",
+            render: (value) => value?.full_name || value?.email || "Unknown",
+            searchValue: (row) =>
+              `${row.created_by_profile?.full_name || ""} ${row.created_by_profile?.email || ""}`,
+          },
+        ]
+      : []),
     {
       key: "sale_date",
       header: "Date",
@@ -237,13 +293,28 @@ export default function SalesPage() {
           <p className="mt-0.5 text-sm text-text-muted">
             {loading
               ? "Loading sales overview..."
-              : "Track completed product sales and today's performance"}
+              : isAdmin
+                ? "Track product sales across all allowed users"
+                : "Track your completed product sales and today's performance"}
           </p>
         </div>
-        <Button onClick={() => setDrawerOpen(true)}>
-          <Plus size={16} className="mr-2" />
-          Record Sale
-        </Button>
+        <div className="flex flex-wrap items-end gap-3">
+          {isAdmin && (
+            <div className="w-full sm:w-[220px]">
+              <Select
+                label="User"
+                value={selectedUserId}
+                onChange={(event) => setSelectedUserId(event.target.value)}
+                options={userOptions}
+                placeholder=""
+              />
+            </div>
+          )}
+          <Button onClick={() => setDrawerOpen(true)}>
+            <Plus size={16} className="mr-2" />
+            Record Sale
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -277,7 +348,7 @@ export default function SalesPage() {
         />
       </div>
 
-      <DataTable data={sales} columns={columns} loading={loading} />
+      <DataTable data={filteredSales} columns={columns} loading={loading} />
 
       <Drawer
         isOpen={drawerOpen}
