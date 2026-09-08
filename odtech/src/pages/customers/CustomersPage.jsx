@@ -10,6 +10,8 @@ import Drawer from "../../components/ui/Drawer";
 import StatCard from "../../components/ui/StatCard";
 import CustomerForm from "./CustomerForm";
 import { buildCustomerInsertPayload } from "../../lib/customerPayloads";
+import { Capacitor } from "@capacitor/core";
+import { createCustomer, listCustomers } from "../../repositories/customerRepository";
 
 const STATUS_COLOR = {
   paid: "success",
@@ -53,6 +55,11 @@ export default function CustomersPage() {
     setLoading(true);
     try {
       console.debug("Fetching customers...");
+      if (Capacitor.isNativePlatform()) {
+        setCustomers(await listCustomers());
+        return;
+      }
+
       const { data, error } = await supabase
         .from("customers")
         .select("*")
@@ -91,6 +98,19 @@ export default function CustomersPage() {
 
     try {
       const newCustomer = buildCustomerInsertPayload(form);
+
+      if (Capacitor.isNativePlatform()) {
+        const data = await createCustomer({
+          ...newCustomer,
+          name: form.full_name,
+          type: form.project_type,
+          status: form.payment_status,
+        });
+        toast.success("Customer added successfully");
+        setCustomers((prev) => [data, ...prev]);
+        setDrawerOpen(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from("customers")

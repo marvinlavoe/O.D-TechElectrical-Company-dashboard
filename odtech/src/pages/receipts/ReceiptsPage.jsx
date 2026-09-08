@@ -10,6 +10,8 @@ import ReceiptForm from './ReceiptForm'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import { generateReceiptPDF } from '../../lib/pdfGenerator'
 import useAuthStore from '../../store/useAuthStore'
+import { Capacitor } from '@capacitor/core'
+import { listReceipts, createReceipt, updateReceipt } from '../../repositories/receiptRepository'
 
 export default function ReceiptsPage() {
   const { profile, session } = useAuthStore()
@@ -26,6 +28,11 @@ export default function ReceiptsPage() {
     }
 
     try {
+      if (Capacitor.isNativePlatform()) {
+        setReceipts(await listReceipts())
+        return
+      }
+
       const { data, error } = await supabase
         .from('receipts')
         .select('*, customers(name), jobs(title)')
@@ -60,6 +67,31 @@ export default function ReceiptsPage() {
 
   const handleSubmit = async (form) => {
     setSaving(true)
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const data = editingRecord
+          ? await updateReceipt(editingRecord.id, form)
+          : await createReceipt(form)
+        toast.success(editingRecord ? 'Receipt updated successfully' : 'Receipt generated successfully')
+        await fetchReceipts({ showLoader: false })
+        setDrawerOpen(false)
+        setEditingRecord(null)
+        if (!editingRecord) {
+          generateReceiptPDF({
+            ...data,
+            customer: data.customers?.name,
+            job_title: data.jobs?.title,
+            generated_by: profile?.full_name || session?.user?.email || 'Local user'
+          })
+        }
+      } catch (error) {
+        toast.error(error.message)
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
 
     if (editingRecord) {
       const { data, error } = await supabase

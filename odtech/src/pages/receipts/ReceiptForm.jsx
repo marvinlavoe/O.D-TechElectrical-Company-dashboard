@@ -4,6 +4,9 @@ import { supabase } from '../../lib/supabase'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
+import { Capacitor } from '@capacitor/core'
+import { listCustomerOptions } from '../../repositories/customerRepository'
+import { queryDatabase } from '../../db/sqlite'
 
 const METHODS = [
   { value: 'Cash', label: 'Cash' },
@@ -38,6 +41,11 @@ export default function ReceiptForm({ initial = null, onSubmit, onCancel, loadin
 
   useEffect(() => {
     async function fetchCustomers() {
+      if (Capacitor.isNativePlatform()) {
+        setCustomers(await listCustomerOptions())
+        return
+      }
+
       const { data } = await supabase.from('customers').select('id, name').order('name')
       if (data) setCustomers(data.map(c => ({ value: c.id, label: c.name })))
     }
@@ -50,6 +58,16 @@ export default function ReceiptForm({ initial = null, onSubmit, onCancel, loadin
         setJobs([])
         return
       }
+
+      if (Capacitor.isNativePlatform()) {
+        const result = await queryDatabase(
+          'SELECT id, title FROM jobs WHERE customer_id = ? ORDER BY created_at DESC',
+          [form.customer_id],
+        )
+        setJobs((result.values || []).map((job) => ({ value: job.id, label: job.title })))
+        return
+      }
+
       const { data } = await supabase
         .from('jobs')
         .select('id, title')

@@ -11,6 +11,8 @@ import InvoiceForm from './InvoiceForm'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import { generateInvoicePDF } from '../../lib/pdfGenerator'
 import useAuthStore from '../../store/useAuthStore'
+import { Capacitor } from '@capacitor/core'
+import { listDocuments, createDocument, updateDocument } from '../../repositories/billingRepository'
 
 export default function BillingPage() {
   const { profile, session } = useAuthStore()
@@ -25,6 +27,21 @@ export default function BillingPage() {
 
   const fetchData = async () => {
     setLoading(true)
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const docs = await listDocuments()
+        setInvoices(docs.filter((doc) => doc.type === 'Invoice'))
+        setQuotes(docs.filter((doc) => doc.type === 'Quote'))
+      } catch (error) {
+        toast.error('Failed to load local billing data')
+        console.error(error)
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
     const { data: docs, error } = await supabase
       .from('billing_documents')
       .select('*, customers(name), document_items(*)')
@@ -53,6 +70,20 @@ export default function BillingPage() {
 
   const handleCreate = async (form) => {
     setSaving(true)
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await createDocument(form)
+        toast.success(`${formType} created successfully`)
+        await fetchData()
+        setDrawerOpen(false)
+      } catch (error) {
+        toast.error(error.message)
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
 
     const prefix = formType === 'Invoice' ? 'INV' : 'QUO'
     const count = (formType === 'Invoice' ? invoices.length : quotes.length) + 1
@@ -100,6 +131,21 @@ export default function BillingPage() {
 
   const handleUpdate = async (form) => {
     setSaving(true)
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await updateDocument(editingRecord.id, form)
+        toast.success(`${formType} updated successfully`)
+        await fetchData()
+        setDrawerOpen(false)
+        setEditingRecord(null)
+      } catch (error) {
+        toast.error(error.message)
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
 
     const { error: docError } = await supabase
       .from('billing_documents')

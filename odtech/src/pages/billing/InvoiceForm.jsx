@@ -5,6 +5,8 @@ import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
 import { formatCurrency } from '../../lib/utils'
+import { Capacitor } from '@capacitor/core'
+import { listCustomerOptions } from '../../repositories/customerRepository'
 
 const STATUSES = [
   { value: 'Draft', label: 'Draft' },
@@ -36,6 +38,11 @@ export default function InvoiceForm({ type = 'Invoice', initial = empty, onSubmi
 
   useEffect(() => {
     async function fetchCustomers() {
+      if (Capacitor.isNativePlatform()) {
+        setCustomers(await listCustomerOptions())
+        return
+      }
+
       const { data } = await supabase.from('customers').select('id, name').order('name')
       if (data) setCustomers(data.map(c => ({ value: c.id, label: c.name })))
     }

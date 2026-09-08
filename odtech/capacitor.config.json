@@ -1,0 +1,9 @@
+{
+  "appId": "com.odtech.mobile",
+  "appName": "ODTech Mobile",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": false
+  }
+}
