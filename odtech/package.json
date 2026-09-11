@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "mobile:dev": "vite --host 0.0.0.0 --port 5173",
+    "mobile:live:sync": "npm run build && npx cap sync android --config capacitor.live.config.json",
+    "android:live": "npx cap run android --live-reload --host 192.168.0.192 --port 5173",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",

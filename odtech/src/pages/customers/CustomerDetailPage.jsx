@@ -15,11 +15,25 @@ import CustomerForm from './CustomerForm'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import { generateReceiptPDF } from '../../lib/pdfGenerator'
 import useAuthStore from '../../store/useAuthStore'
+import { isMobileApp } from '../../lib/platform'
+import { listCustomers, updateCustomer } from '../../repositories/customerRepository'
 
 const STATUS_COLOR  = { Active: 'success', Inactive: 'danger', paid: 'success', partial: 'warning', unpaid: 'danger' }
 const STATUS_LABEL  = { Active: 'Active', Inactive: 'Inactive', paid: 'Paid', partial: 'Partial', unpaid: 'Unpaid' }
 const JOB_COLOR     = { Completed: 'success', 'In Progress': 'info', Pending: 'warning', Cancelled: 'danger' }
 const INV_COLOR     = { Paid: 'success', Unpaid: 'danger', Overdue: 'danger', 'Partially Paid': 'warning' }
+const PROJECT_LABEL = {
+  metal_fabrication: 'Metal Fabrication',
+  structural_steel: 'Structural Steel',
+  welding_repairs: 'Welding & Repairs',
+  gates_railings: 'Gates & Railings',
+  stairs_balustrades: 'Stairs & Balustrades',
+  trailers_frames: 'Trailers & Frames',
+  custom_metalwork: 'Custom Metalwork',
+  installation: 'Installation & Fitting',
+  maintenance: 'Metal Maintenance',
+  other: 'Other',
+}
 
 function InfoRow({ icon: Icon, label, value }) {
   return (
@@ -61,6 +75,17 @@ export default function CustomerDetailPage() {
   const fetchCustomerData = async () => {
     setLoading(true)
     try {
+      if (isMobileApp) {
+        const customers = await listCustomers()
+        const localCustomer = customers.find((item) => item.id === id)
+        if (!localCustomer) throw new Error('Customer not found')
+        setCustomer(localCustomer)
+        setJobs([])
+        setInvoices([])
+        setReceipts([])
+        return
+      }
+
       // Fetch customer
       const { data: cust, error: custError } = await supabase
         .from('customers')
@@ -108,6 +133,27 @@ export default function CustomerDetailPage() {
   }, [id])
 
   const handleEdit = async (form) => {
+    if (isMobileApp) {
+      try {
+        const updatedCustomer = await updateCustomer(id, {
+          name: form.full_name,
+          email: form.email,
+          phone: form.phone,
+          address: form.address,
+          city: form.city,
+          type: form.project_type,
+          status: form.payment_status === 'unpaid' ? 'Inactive' : 'Active',
+          notes: form.notes,
+        })
+        setCustomer((previous) => ({ ...previous, ...updatedCustomer }))
+        toast.success('Customer updated')
+        setEditOpen(false)
+      } catch (error) {
+        toast.error(error.message || 'Failed to update customer')
+      }
+      return
+    }
+
     const { error } = await supabase
       .from('customers')
       .update({
@@ -164,7 +210,7 @@ export default function CustomerDetailPage() {
                   color={STATUS_COLOR[customer.status] ?? 'default'}
                 />
               </div>
-              <p className="text-sm text-text-muted mt-1">{customer.type || 'No project type set'}</p>
+              <p className="text-sm text-text-muted mt-1">{PROJECT_LABEL[customer.type] ?? customer.type ?? 'No project type set'}</p>
               <p className="text-xs text-text-muted mt-1">
                 Customer since {formatDate(customer.created_at, 'long')}
               </p>

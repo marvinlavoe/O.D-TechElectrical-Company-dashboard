@@ -1,19 +1,20 @@
 import { useState } from 'react'
-import { User, Phone, MapPin, Mail, Briefcase, DollarSign, FileText } from 'lucide-react'
+import { User, Phone, MapPin, Mail } from 'lucide-react'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
 
 const PROJECT_TYPES = [
-  { value: 'residential_wiring',  label: 'Residential Wiring' },
-  { value: 'commercial_wiring',   label: 'Commercial Wiring' },
-  { value: 'industrial_wiring',   label: 'Industrial Wiring' },
-  { value: 'panel_upgrade',       label: 'Panel / Board Upgrade' },
-  { value: 'security_systems',    label: 'Security Systems' },
-  { value: 'solar_installation',  label: 'Solar Installation' },
-  { value: 'ev_charging',         label: 'EV Charging Station' },
-  { value: 'maintenance',         label: 'Maintenance & Repair' },
-  { value: 'other',               label: 'Other' },
+  { value: 'metal_fabrication', label: 'Metal Fabrication' },
+  { value: 'structural_steel', label: 'Structural Steel' },
+  { value: 'welding_repairs', label: 'Welding & Repairs' },
+  { value: 'gates_railings', label: 'Gates & Railings' },
+  { value: 'stairs_balustrades', label: 'Stairs & Balustrades' },
+  { value: 'trailers_frames', label: 'Trailers & Frames' },
+  { value: 'custom_metalwork', label: 'Custom Metalwork' },
+  { value: 'installation', label: 'Installation & Fitting' },
+  { value: 'maintenance', label: 'Metal Maintenance' },
+  { value: 'other', label: 'Other' },
 ]
 
 const PAYMENT_STATUSES = [

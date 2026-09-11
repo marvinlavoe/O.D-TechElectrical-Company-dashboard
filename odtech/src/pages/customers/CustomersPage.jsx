@@ -10,8 +10,11 @@ import Drawer from "../../components/ui/Drawer";
 import StatCard from "../../components/ui/StatCard";
 import CustomerForm from "./CustomerForm";
 import { buildCustomerInsertPayload } from "../../lib/customerPayloads";
-import { Capacitor } from "@capacitor/core";
-import { createCustomer, listCustomers } from "../../repositories/customerRepository";
+import { isMobileApp } from "../../lib/platform";
+import {
+  createCustomer,
+  listCustomers,
+} from "../../repositories/customerRepository";
 
 const STATUS_COLOR = {
   paid: "success",
@@ -29,18 +32,16 @@ const STATUS_LABEL = {
 };
 
 const PROJECT_LABEL = {
-  residential_wiring: "Residential Wiring",
-  commercial_wiring: "Commercial Wiring",
-  industrial_wiring: "Industrial Wiring",
-  panel_upgrade: "Panel Upgrade",
-  security_systems: "Security Systems",
-  solar_installation: "Solar Installation",
-  ev_charging: "EV Charging",
-  maintenance: "Maintenance",
+  metal_fabrication: "Metal Fabrication",
+  structural_steel: "Structural Steel",
+  welding_repairs: "Welding & Repairs",
+  gates_railings: "Gates & Railings",
+  stairs_balustrades: "Stairs & Balustrades",
+  trailers_frames: "Trailers & Frames",
+  custom_metalwork: "Custom Metalwork",
+  installation: "Installation & Fitting",
+  maintenance: "Metal Maintenance",
   other: "Other",
-  Residential: "Residential",
-  Commercial: "Commercial",
-  Industrial: "Industrial",
 };
 
 export default function CustomersPage() {
@@ -55,7 +56,7 @@ export default function CustomersPage() {
     setLoading(true);
     try {
       console.debug("Fetching customers...");
-      if (Capacitor.isNativePlatform()) {
+      if (isMobileApp) {
         setCustomers(await listCustomers());
         return;
       }
@@ -99,7 +100,7 @@ export default function CustomersPage() {
     try {
       const newCustomer = buildCustomerInsertPayload(form);
 
-      if (Capacitor.isNativePlatform()) {
+      if (isMobileApp) {
         const data = await createCustomer({
           ...newCustomer,
           name: form.full_name,
@@ -166,13 +167,20 @@ export default function CustomersPage() {
     },
   ];
 
-  const activeCustomers = customers.filter((customer) => customer.status === "Active").length;
-  const inactiveCustomers = customers.filter((customer) => customer.status === "Inactive").length;
+  const activeCustomers = customers.filter(
+    (customer) => customer.status === "Active",
+  ).length;
+  const inactiveCustomers = customers.filter(
+    (customer) => customer.status === "Inactive",
+  ).length;
   const now = new Date();
   const newThisMonth = customers.filter((customer) => {
     if (!customer.created_at) return false;
     const createdAt = new Date(customer.created_at);
-    return createdAt.getMonth() === now.getMonth() && createdAt.getFullYear() === now.getFullYear();
+    return (
+      createdAt.getMonth() === now.getMonth() &&
+      createdAt.getFullYear() === now.getFullYear()
+    );
   }).length;
 
   return (

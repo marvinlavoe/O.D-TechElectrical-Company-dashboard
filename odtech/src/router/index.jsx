@@ -38,6 +38,7 @@ import MerchantHubPage from '../pages/merchant-hub/MerchantHubPage'
 import ModuleAccessPage from '../pages/admin/ModuleAccessPage'
 import ChatPage      from '../pages/chat/ChatPage'
 import SettingsPage  from '../pages/settings/SettingsPage'
+import { isMobileApp } from '../lib/platform'
 
 const router = createBrowserRouter([
   { path: '/', element: <SplashPage /> },
@@ -58,7 +59,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true,                    path: '/dashboard',        element: <AdminRoute><AdminDashboard /></AdminRoute> },
+      { index: true,                    path: '/dashboard',        element: isMobileApp ? <Navigate to="/billing" replace /> : <AdminRoute><AdminDashboard /></AdminRoute> },
       { path: '/dashboard/worker',       element: <WorkerDashboard /> },
       { path: '/customers',              element: <CustomersPage /> },
       { path: '/customers/:id',          element: <CustomerDetailPage /> },
@@ -76,7 +77,7 @@ const router = createBrowserRouter([
       { path: '/reports',                element: <AdminRoute><ReportsPage /></AdminRoute> },
       { path: '/chat',                   element: <ChatPage /> },
       { path: '/settings',               element: <SettingsPage /> },
-      { path: '*',                       element: <Navigate to="/dashboard" replace /> },
+      { path: '*',                       element: <Navigate to={isMobileApp ? '/billing' : '/dashboard'} replace /> },
     ],
   },
 ])

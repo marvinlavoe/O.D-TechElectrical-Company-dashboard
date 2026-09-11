@@ -2,10 +2,13 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
-import { Capacitor } from "@capacitor/core";
 import { supabase } from "./lib/supabase";
 import { initializeDatabase } from "./db/sqlite";
-import { applySystemPreferences, readStoredSystemPreferences } from "./lib/settings";
+import { isMobileApp } from "./lib/platform";
+import {
+  applySystemPreferences,
+  readStoredSystemPreferences,
+} from "./lib/settings";
 import useAuthStore from "./store/useAuthStore";
 import Router from "./router";
 import "./index.css";
@@ -33,7 +36,7 @@ async function syncAuthState(session) {
 }
 
 async function initializeApp() {
-  if (Capacitor.isNativePlatform()) {
+  if (isMobileApp) {
     await initializeDatabase();
     const store = useAuthStore.getState();
     store.setSession({ user: { email: "local@device" } });

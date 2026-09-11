@@ -1,7 +1,9 @@
 import { jsPDF } from "jspdf";
 import { autoTable } from "jspdf-autotable";
+import { Capacitor } from "@capacitor/core";
+import { Directory, Filesystem } from "@capacitor/filesystem";
 import { formatCurrency, formatDate } from "./utils";
-import splashLogo from "../assets/splash.jpg";
+import philLogo from "../assets/phil-logo.png";
 
 let cachedReceiptLogo = null;
 
@@ -31,6 +33,24 @@ function loadImageAsDataUrl(src) {
   });
 }
 
+async function savePdf(doc, filename) {
+  if (!Capacitor.isNativePlatform()) {
+    doc.save(filename);
+    return;
+  }
+
+  const base64 = doc.output("datauristring").split(",")[1];
+  if (!base64) {
+    throw new Error("Unable to prepare the PDF file");
+  }
+
+  await Filesystem.writeFile({
+    path: filename,
+    data: base64,
+    directory: Directory.Documents,
+  });
+}
+
 export async function generateInvoicePDF(data, type = "Invoice") {
   const doc = new jsPDF();
   const emerald = [18, 140, 126];
@@ -48,12 +68,25 @@ export async function generateInvoicePDF(data, type = "Invoice") {
   const issueDate = formatDate(data.date);
   const customerName = data.customer || "Walk-in Customer";
   const status = data.status || (type === "Quote" ? "Draft" : "Sent");
-  const amountTotal = formatCurrency(data.amount || 0);
   const generatedBy =
     data.generated_by || data.generated_by_email || "Account user";
   const items = (data.items || []).length
     ? data.items
     : [{ description: "General Service", qty: 1, price: data.amount || 0 }];
+  const lineItemsTotal = items.reduce(
+    (sum, item) => sum + Number(item.qty || 1) * Number(item.price || 0),
+    0,
+  );
+  const workmanshipCost = Number(data.workmanship_cost || 0);
+  const grossTotal = Number(
+    data.gross_total ?? lineItemsTotal + workmanshipCost,
+  );
+  const discountPercentage = Number(data.discount_percentage || 0);
+  const discount = Number(data.discount || 0);
+  const netTotal = Number(
+    data.net_total ?? data.amount ?? Math.max(0, grossTotal - discount),
+  );
+  const amountTotal = formatCurrency(netTotal);
 
   const tableData = items.map((item, index) => {
     const quantity = Number(item.qty || 1);
@@ -72,7 +105,7 @@ export async function generateInvoicePDF(data, type = "Invoice") {
   doc.rect(0, 0, 210, 46, "F");
 
   try {
-    const logoDataUrl = await loadImageAsDataUrl(splashLogo);
+    const logoDataUrl = await loadImageAsDataUrl(philLogo);
     doc.addImage(logoDataUrl, "JPEG", 14, 8, 26, 26);
   } catch (error) {
     console.warn(error);
@@ -81,12 +114,13 @@ export async function generateInvoicePDF(data, type = "Invoice") {
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(19);
-  doc.text("O.D TECH", 46, 18);
+  doc.text("Phil's Metal Works", 46, 18);
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
-  doc.text("Electrical Engineering Solutions", 46, 25);
-  doc.text("Accra, Abuyaa Junction, Sowutuom road", 46, 31);
-  doc.text("054 863 1776  |  narda144@gmail.com", 46, 36);
+  doc.text("Where Metal Becomes Art", 46, 25);
+
+  doc.text("Sowutuom, Accra", 46, 31);
+  doc.text("0558756263  |  akrofipilip36@gmail.com", 46, 36);
 
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(142, 8, 54, 28, 6, 6, "F");
@@ -130,12 +164,14 @@ export async function generateInvoicePDF(data, type = "Invoice") {
   doc.setTextColor(accent[0], accent[1], accent[2]);
   doc.setFontSize(13);
   doc.text(status.toUpperCase(), 142, 84);
-  doc.setFontSize(amountTotal.length > 13 ? 14 : amountTotal.length > 10 ? 16 : 18);
+  doc.setFontSize(
+    amountTotal.length > 13 ? 14 : amountTotal.length > 10 ? 16 : 18,
+  );
   doc.text(amountTotal, 190, 91, { align: "right" });
 
   autoTable(doc, {
     startY: 108,
-    head: [["#", "Description", "Qty", "Unit Price", "Line Total"]],
+    head: [["#", "Item Name", "Qty", "Unit Price", "Line Total"]],
     body: tableData,
     theme: "grid",
     headStyles: { fillColor: emeraldDark, textColor: 255, fontStyle: "bold" },
@@ -160,9 +196,17 @@ export async function generateInvoicePDF(data, type = "Invoice") {
 
   const finalY = (doc.lastAutoTable?.finalY || 108) + 12;
 
-  doc.setFillColor(type === "Quote" ? 255 : 232, type === "Quote" ? 249 : 244, type === "Quote" ? 232 : 242);
+  doc.setFillColor(
+    type === "Quote" ? 255 : 232,
+    type === "Quote" ? 249 : 244,
+    type === "Quote" ? 232 : 242,
+  );
   doc.roundedRect(14, finalY, 108, 34, 8, 8, "F");
-  doc.setTextColor(type === "Quote" ? gold[0] : emerald[0], type === "Quote" ? gold[1] : emerald[1], type === "Quote" ? gold[2] : emerald[2]);
+  doc.setTextColor(
+    type === "Quote" ? gold[0] : emerald[0],
+    type === "Quote" ? gold[1] : emerald[1],
+    type === "Quote" ? gold[2] : emerald[2],
+  );
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.text(type === "Quote" ? "QUOTE NOTES" : "PAYMENT NOTES", 20, finalY + 11);
@@ -180,13 +224,19 @@ export async function generateInvoicePDF(data, type = "Invoice") {
   doc.setTextColor(textSoft[0], textSoft[1], textSoft[2]);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.text("Subtotal", 136, finalY + 11);
-  doc.text("Tax", 136, finalY + 19);
+  doc.text("Gross Total", 136, finalY + 9);
+  doc.text("Workmanship", 136, finalY + 17);
+  doc.text(
+    `Discount${discountPercentage ? ` (${discountPercentage}%)` : ""}`,
+    136,
+    finalY + 25,
+  );
   doc.text(type === "Quote" ? "Quoted Total" : "Total Due", 136, finalY + 31);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-  doc.text(amountTotal, 190, finalY + 11, { align: "right" });
-  doc.text(formatCurrency(0), 190, finalY + 19, { align: "right" });
+  doc.text(formatCurrency(grossTotal), 190, finalY + 9, { align: "right" });
+  doc.text(formatCurrency(workmanshipCost), 190, finalY + 17, { align: "right" });
+  doc.text(formatCurrency(discount), 190, finalY + 25, { align: "right" });
   doc.setTextColor(accent[0], accent[1], accent[2]);
   doc.setFontSize(13);
   doc.text(amountTotal, 190, finalY + 31, { align: "right" });
@@ -199,21 +249,25 @@ export async function generateInvoicePDF(data, type = "Invoice") {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.text(`Generated by ${generatedBy}`, 20, footerY + 6);
-  doc.text(type === "Quote" ? "Client approval" : "Authorized signature", 122, footerY + 6);
+  doc.text(
+    type === "Quote" ? "Client approval" : "Authorized signature",
+    122,
+    footerY + 6,
+  );
 
   doc.setFontSize(8);
   doc.text(
     type === "Quote"
-      ? "Thank you for considering O.D TECH ELECTRICAL ENGINEERING SOLUTIONS."
+      ? "Thank you for considering Phil's Metal Works."
       : "Thank you for your business.",
     14,
     286,
   );
-  doc.text("O.D TECH ELECTRICAL ENGINEERING SOLUTIONS", 196, 286, {
+  doc.text("PHIL'S METAL WORKS", 196, 286, {
     align: "right",
   });
 
-  doc.save(`${type.toLowerCase()}_${documentNumber}.pdf`);
+  await savePdf(doc, `${type.toLowerCase()}_${documentNumber}.pdf`);
 }
 export async function generateReceiptPDF(data) {
   const doc = new jsPDF();
@@ -242,7 +296,7 @@ export async function generateReceiptPDF(data) {
   doc.rect(0, 0, 210, 44, "F");
 
   try {
-    const logoDataUrl = await loadImageAsDataUrl(splashLogo);
+    const logoDataUrl = await loadImageAsDataUrl(philLogo);
     doc.addImage(logoDataUrl, "JPEG", 14, 8, 26, 26);
   } catch (error) {
     console.warn(error);
@@ -251,12 +305,12 @@ export async function generateReceiptPDF(data) {
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(19);
-  doc.text("O.D TECH", 46, 18);
+  doc.text("Phil's Metal Works", 46, 18);
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
-  doc.text("Electrical Engineering Solutions", 46, 25);
-  doc.text("Accra, Abuyaa Junction, Sowutuom road", 46, 31);
-  doc.text("054 863 1776  |  narda144@gmail.com", 46, 36);
+  doc.text("Metal fabrication and workshop services", 46, 25);
+  doc.text("Sowutuom, Accra", 46, 31);
+  doc.text("0558756263  |  akrofipilip36@gmail.com", 46, 36);
 
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(142, 8, 54, 26, 6, 6, "F");
@@ -371,5 +425,5 @@ export async function generateReceiptPDF(data) {
     { align: "right" },
   );
 
-  doc.save(`receipt_${receiptNumber}.pdf`);
+  await savePdf(doc, `receipt_${receiptNumber}.pdf`);
 }

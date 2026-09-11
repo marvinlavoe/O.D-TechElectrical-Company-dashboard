@@ -1,5 +1,5 @@
-export const DATABASE_NAME = 'odtech'
-export const DATABASE_VERSION = 2
+export const DATABASE_NAME = "odtech";
+export const DATABASE_VERSION = 4;
 
 export const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS app_settings (
@@ -35,6 +35,11 @@ export const schemaStatements = [
     type TEXT NOT NULL CHECK (type IN ('Invoice', 'Quote')),
     date TEXT NOT NULL,
     amount_minor INTEGER NOT NULL DEFAULT 0,
+    workmanship_cost_minor INTEGER NOT NULL DEFAULT 0,
+    discount_percentage REAL NOT NULL DEFAULT 0,
+    discount_minor INTEGER NOT NULL DEFAULT 0,
+    gross_total_minor INTEGER NOT NULL DEFAULT 0,
+    net_total_minor INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
@@ -62,7 +67,7 @@ export const schemaStatements = [
     FOREIGN KEY (customer_id) REFERENCES customers(id),
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL
   )`,
-  'CREATE INDEX IF NOT EXISTS idx_billing_documents_date ON billing_documents(date)',
-  'CREATE INDEX IF NOT EXISTS idx_receipts_date ON receipts(date)',
-  'CREATE INDEX IF NOT EXISTS idx_jobs_customer_id ON jobs(customer_id)',
-]
+  "CREATE INDEX IF NOT EXISTS idx_billing_documents_date ON billing_documents(date)",
+  "CREATE INDEX IF NOT EXISTS idx_receipts_date ON receipts(date)",
+  "CREATE INDEX IF NOT EXISTS idx_jobs_customer_id ON jobs(customer_id)",
+];

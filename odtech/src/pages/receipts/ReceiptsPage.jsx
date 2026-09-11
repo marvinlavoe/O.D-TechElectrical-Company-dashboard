@@ -1,206 +1,262 @@
-import React, { useState, useEffect } from 'react'
-import { Plus, Download, Search, FileText, Wallet, CalendarDays, BarChart3 } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
-import toast from 'react-hot-toast'
-import DataTable from '../../components/ui/DataTable'
-import Button from '../../components/ui/Button'
-import Drawer from '../../components/ui/Drawer'
-import StatCard from '../../components/ui/StatCard'
-import ReceiptForm from './ReceiptForm'
-import { formatCurrency, formatDate } from '../../lib/utils'
-import { generateReceiptPDF } from '../../lib/pdfGenerator'
-import useAuthStore from '../../store/useAuthStore'
-import { Capacitor } from '@capacitor/core'
-import { listReceipts, createReceipt, updateReceipt } from '../../repositories/receiptRepository'
+import React, { useState, useEffect } from "react";
+import {
+  Plus,
+  Download,
+  Search,
+  FileText,
+  Wallet,
+  CalendarDays,
+  BarChart3,
+} from "lucide-react";
+import { supabase } from "../../lib/supabase";
+import toast from "react-hot-toast";
+import DataTable from "../../components/ui/DataTable";
+import Button from "../../components/ui/Button";
+import Drawer from "../../components/ui/Drawer";
+import StatCard from "../../components/ui/StatCard";
+import ReceiptForm from "./ReceiptForm";
+import { formatCurrency, formatDate } from "../../lib/utils";
+import { generateReceiptPDF } from "../../lib/pdfGenerator";
+import useAuthStore from "../../store/useAuthStore";
+import { Capacitor } from "@capacitor/core";
+import {
+  listReceipts,
+  createReceipt,
+  updateReceipt,
+} from "../../repositories/receiptRepository";
 
 export default function ReceiptsPage() {
-  const { profile, session } = useAuthStore()
-  const [receipts, setReceipts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [editingRecord, setEditingRecord] = useState(null)
-  const [saving, setSaving] = useState(false)
-  const [search, setSearch] = useState('')
+  const { profile, session } = useAuthStore();
+  const [receipts, setReceipts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
 
   const fetchReceipts = async ({ showLoader = true } = {}) => {
     if (showLoader) {
-      setLoading(true)
+      setLoading(true);
     }
 
     try {
       if (Capacitor.isNativePlatform()) {
-        setReceipts(await listReceipts())
-        return
+        setReceipts(await listReceipts());
+        return;
       }
 
       const { data, error } = await supabase
-        .from('receipts')
-        .select('*, customers(name), jobs(title)')
-        .order('created_at', { ascending: false })
+        .from("receipts")
+        .select("*, customers(name), jobs(title)")
+        .order("created_at", { ascending: false });
 
       if (error) {
-        throw error
+        throw error;
       }
 
-      setReceipts(data || [])
+      setReceipts(data || []);
     } catch (error) {
-      toast.error('Failed to load receipts')
-      console.error(error)
-      setReceipts([])
+      toast.error("Failed to load receipts");
+      console.error(error);
+      setReceipts([]);
     } finally {
       if (showLoader) {
-        setLoading(false)
+        setLoading(false);
       }
     }
-  }
+  };
 
   useEffect(() => {
     queueMicrotask(() => {
-      fetchReceipts()
-    })
-  }, [])
+      fetchReceipts();
+    });
+  }, []);
 
   const handleEdit = (record) => {
-    setEditingRecord(record)
-    setDrawerOpen(true)
-  }
+    setEditingRecord(record);
+    setDrawerOpen(true);
+  };
 
   const handleSubmit = async (form) => {
-    setSaving(true)
+    setSaving(true);
 
     if (Capacitor.isNativePlatform()) {
       try {
         const data = editingRecord
           ? await updateReceipt(editingRecord.id, form)
-          : await createReceipt(form)
-        toast.success(editingRecord ? 'Receipt updated successfully' : 'Receipt generated successfully')
-        await fetchReceipts({ showLoader: false })
-        setDrawerOpen(false)
-        setEditingRecord(null)
+          : await createReceipt(form);
+        toast.success(
+          editingRecord
+            ? "Receipt updated successfully"
+            : "Receipt generated successfully",
+        );
+        await fetchReceipts({ showLoader: false });
+        setDrawerOpen(false);
+        setEditingRecord(null);
         if (!editingRecord) {
           generateReceiptPDF({
             ...data,
             customer: data.customers?.name,
             job_title: data.jobs?.title,
-            generated_by: profile?.full_name || session?.user?.email || 'Local user'
-          })
+            generated_by:
+              profile?.full_name || session?.user?.email || "Local user",
+          });
         }
       } catch (error) {
-        toast.error(error.message)
+        toast.error(error.message);
       } finally {
-        setSaving(false)
+        setSaving(false);
       }
-      return
+      return;
     }
 
     if (editingRecord) {
       const { data, error } = await supabase
-        .from('receipts')
+        .from("receipts")
         .update({
           customer_id: form.customer_id,
           job_id: form.job_id || null,
           date: form.date,
           amount: parseFloat(form.amount || 0),
           method: form.method,
-          notes: form.notes
+          notes: form.notes,
         })
-        .eq('id', editingRecord.id)
-        .select('*, customers(name), jobs(title)')
-        .single()
+        .eq("id", editingRecord.id)
+        .select("*, customers(name), jobs(title)")
+        .single();
 
-      setSaving(false)
+      setSaving(false);
 
       if (error) {
-        toast.error(error.message)
+        toast.error(error.message);
       } else {
-        toast.success('Receipt updated successfully')
-        setReceipts((prev) => prev.map((receipt) => (receipt.id === editingRecord.id ? data : receipt)))
-        setDrawerOpen(false)
-        setEditingRecord(null)
+        toast.success("Receipt updated successfully");
+        setReceipts((prev) =>
+          prev.map((receipt) =>
+            receipt.id === editingRecord.id ? data : receipt,
+          ),
+        );
+        setDrawerOpen(false);
+        setEditingRecord(null);
       }
     } else {
-      const count = receipts.length + 1
-      const receiptNum = `REC-${String(count).padStart(3, '0')}-${new Date().getFullYear()}`
+      const count = receipts.length + 1;
+      const receiptNum = `REC-${String(count).padStart(3, "0")}-${new Date().getFullYear()}`;
 
       const { data, error } = await supabase
-        .from('receipts')
-        .insert([{
-          receipt_number: receiptNum,
-          customer_id: form.customer_id,
-          job_id: form.job_id || null,
-          date: form.date,
-          amount: parseFloat(form.amount || 0),
-          method: form.method,
-          notes: form.notes
-        }])
-        .select('*, customers(name), jobs(title)')
-        .single()
+        .from("receipts")
+        .insert([
+          {
+            receipt_number: receiptNum,
+            customer_id: form.customer_id,
+            job_id: form.job_id || null,
+            date: form.date,
+            amount: parseFloat(form.amount || 0),
+            method: form.method,
+            notes: form.notes,
+          },
+        ])
+        .select("*, customers(name), jobs(title)")
+        .single();
 
-      setSaving(false)
+      setSaving(false);
 
       if (error) {
-        toast.error(error.message)
+        toast.error(error.message);
       } else {
-        toast.success('Receipt generated successfully')
-        setReceipts((prev) => [data, ...prev])
-        setDrawerOpen(false)
+        toast.success("Receipt generated successfully");
+        setReceipts((prev) => [data, ...prev]);
+        setDrawerOpen(false);
 
         generateReceiptPDF({
           ...data,
           customer: data.customers?.name,
           job_title: data.jobs?.title,
-          generated_by: profile?.full_name || session?.user?.email || 'Account user'
-        })
+          generated_by:
+            profile?.full_name || session?.user?.email || "Account user",
+        });
       }
     }
-  }
+  };
 
-  const handleDownload = (row) => {
-    generateReceiptPDF({
-      ...row,
-      customer: row.customers?.name,
-      job_title: row.jobs?.title,
-      generated_by: profile?.full_name || session?.user?.email || 'Account user'
-    })
-  }
+  const handleDownload = async (row) => {
+    try {
+      await generateReceiptPDF({
+        ...row,
+        customer: row.customers?.name,
+        job_title: row.jobs?.title,
+        generated_by:
+          profile?.full_name || session?.user?.email || "Account user",
+      });
+      toast.success("Receipt PDF saved to Documents");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save receipt PDF");
+    }
+  };
 
-  const filtered = receipts.filter((receipt) =>
-    (receipt.receipt_number || '').toLowerCase().includes(search.toLowerCase()) ||
-    receipt.customers?.name?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = receipts.filter(
+    (receipt) =>
+      (receipt.receipt_number || "")
+        .toLowerCase()
+        .includes(search.toLowerCase()) ||
+      receipt.customers?.name?.toLowerCase().includes(search.toLowerCase()),
+  );
 
-  const todayKey = new Date().toISOString().slice(0, 10)
-  const totalCollected = receipts.reduce((sum, receipt) => sum + Number(receipt.amount || 0), 0)
-  const todaysReceipts = receipts.filter((receipt) => receipt.date === todayKey)
-  const todaysCollected = todaysReceipts.reduce((sum, receipt) => sum + Number(receipt.amount || 0), 0)
-  const averageReceiptAmount = receipts.length ? totalCollected / receipts.length : 0
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const totalCollected = receipts.reduce(
+    (sum, receipt) => sum + Number(receipt.amount || 0),
+    0,
+  );
+  const todaysReceipts = receipts.filter(
+    (receipt) => receipt.date === todayKey,
+  );
+  const todaysCollected = todaysReceipts.reduce(
+    (sum, receipt) => sum + Number(receipt.amount || 0),
+    0,
+  );
+  const averageReceiptAmount = receipts.length
+    ? totalCollected / receipts.length
+    : 0;
 
   const columns = [
-    { key: 'receipt_number', header: 'Receipt #' },
-    { key: 'customers', header: 'Customer', render: (val) => val?.name || 'Walk-in' },
+    { key: "receipt_number", header: "Receipt #" },
     {
-      key: 'jobs',
-      header: 'Job Reference',
-      render: (val) => <span className="text-xs italic text-text-muted">{val?.title || 'General Payment'}</span>
+      key: "customers",
+      header: "Customer",
+      render: (val) => val?.name || "Walk-in",
     },
-    { key: 'date', header: 'Date', render: (val) => formatDate(val) },
     {
-      key: 'method',
-      header: 'Method',
+      key: "jobs",
+      header: "Job Reference",
+      render: (val) => (
+        <span className="text-xs italic text-text-muted">
+          {val?.title || "General Payment"}
+        </span>
+      ),
+    },
+    { key: "date", header: "Date", render: (val) => formatDate(val) },
+    {
+      key: "method",
+      header: "Method",
       render: (val) => (
         <span className="rounded-md border border-surface-border bg-surface px-2 py-1 text-xs font-medium text-text-secondary">
           {val}
         </span>
-      )
+      ),
     },
     {
-      key: 'amount',
-      header: 'Amount Paid',
-      render: (val) => <span className="text-sm font-bold text-success">{formatCurrency(val)}</span>
+      key: "amount",
+      header: "Amount Paid",
+      render: (val) => (
+        <span className="text-sm font-bold text-success">
+          {formatCurrency(val)}
+        </span>
+      ),
     },
     {
-      key: 'actions',
-      header: '',
+      key: "actions",
+      header: "",
       render: (_, row) => (
         <div className="flex gap-2">
           <Button variant="ghost" size="xs" onClick={() => handleEdit(row)}>
@@ -210,20 +266,27 @@ export default function ReceiptsPage() {
             <Download size={13} className="mr-1.5" /> PDF
           </Button>
         </div>
-      )
-    }
-  ]
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4 bg-surface pb-2">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Payment Receipts</h1>
-          <p className="mt-0.5 text-sm text-text-muted">Manage and issue proof of payment</p>
+          <h1 className="text-2xl font-bold text-text-primary">
+            Payment Receipts
+          </h1>
+          <p className="mt-0.5 text-sm text-text-muted">
+            Manage and issue proof of payment
+          </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
+            />
             <input
               type="text"
               placeholder="Search receipts..."
@@ -256,7 +319,7 @@ export default function ReceiptsPage() {
         <StatCard
           title="Collected Today"
           value={formatCurrency(todaysCollected)}
-          subtitle={`${todaysReceipts.length} receipt${todaysReceipts.length === 1 ? '' : 's'} for ${formatDate(todayKey)}`}
+          subtitle={`${todaysReceipts.length} receipt${todaysReceipts.length === 1 ? "" : "s"} for ${formatDate(todayKey)}`}
           icon={CalendarDays}
           color="text-warning"
         />
@@ -273,7 +336,9 @@ export default function ReceiptsPage() {
         {loading ? (
           <div className="flex flex-col items-center gap-4 py-20">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-            <p className="animate-pulse text-sm font-medium text-text-muted">Loading receipts...</p>
+            <p className="animate-pulse text-sm font-medium text-text-muted">
+              Loading receipts...
+            </p>
           </div>
         ) : (
           <DataTable data={filtered} columns={columns} />
@@ -283,22 +348,24 @@ export default function ReceiptsPage() {
       <Drawer
         isOpen={drawerOpen}
         onClose={() => {
-          setDrawerOpen(false)
-          setEditingRecord(null)
+          setDrawerOpen(false);
+          setEditingRecord(null);
         }}
-        title={editingRecord ? 'Edit Payment Receipt' : 'Create Payment Receipt'}
+        title={
+          editingRecord ? "Edit Payment Receipt" : "Create Payment Receipt"
+        }
         width="w-full md:w-[500px]"
       >
         <ReceiptForm
           initial={editingRecord}
           onSubmit={handleSubmit}
           onCancel={() => {
-            setDrawerOpen(false)
-            setEditingRecord(null)
+            setDrawerOpen(false);
+            setEditingRecord(null);
           }}
           loading={saving}
         />
       </Drawer>
     </div>
-  )
+  );
 }

@@ -19,6 +19,8 @@ import {
 import useAuthStore from "../../store/useAuthStore";
 import useSidebarStore from "../../store/useSidebarStore";
 import Avatar from "../ui/Avatar";
+import splashLogo from "../../assets/phil-logo.png";
+import { isMobileApp } from "../../lib/platform";
 import {
   getDefaultRoute,
   getUserRole,
@@ -41,6 +43,13 @@ const NAV_ITEMS = [
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
+const MOBILE_NAV_ITEMS = [
+  { to: "/billing", icon: CreditCard, label: "Invoices" },
+  { to: "/customers", icon: Users, label: "Customers" },
+  { to: "/receipts", icon: FileText, label: "Receipts" },
+  { to: "/inventory", icon: Package, label: "Inventory" },
+];
+
 export default function Sidebar() {
   const { session, profile, moduleAccess, logout } = useAuthStore();
   const navigate = useNavigate();
@@ -55,7 +64,7 @@ export default function Sidebar() {
     navigate("/login");
   };
 
-  const visible = NAV_ITEMS
+  const visible = (isMobileApp ? MOBILE_NAV_ITEMS : NAV_ITEMS)
     .filter((item) => {
       if (item.adminOnly && !isAdmin) return false;
       if (item.moduleKey) {
@@ -106,12 +115,12 @@ export default function Sidebar() {
           }`}
         >
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <Zap size={18} className="text-primary" />
+            <img src={splashLogo} alt="Phil's Metal Works" className="h-8 w-8 rounded-lg object-cover" />
           </div>
           {!isCollapsed && (
             <div>
               <p className="text-sm font-bold leading-none text-text-primary">
-                O.D DASHBOARD
+                Phil's Metal Works
               </p>
               <p className="mt-0.5 text-xs capitalize text-text-muted">
                 {role}
@@ -151,14 +160,14 @@ export default function Sidebar() {
             }`}
           >
             <Avatar
-              name={profile?.full_name || session?.user?.email || "User"}
+              name={profile?.full_name || session?.user?.email || "Phil's Metal Works"}
               src={profile?.avatar_url}
               size="sm"
             />
             {!isCollapsed && (
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-text-primary">
-                  {profile?.full_name || session?.user?.email || "User"}
+                  {profile?.full_name || session?.user?.email || "Phil's Metal Works"}
                 </p>
                 <p className="truncate text-xs text-text-muted">
                   {profile?.specialization || role}
