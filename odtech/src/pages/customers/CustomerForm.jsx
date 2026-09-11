@@ -1,68 +1,76 @@
-import { useState } from 'react'
-import { User, Phone, MapPin, Mail } from 'lucide-react'
-import Input from '../../components/ui/Input'
-import Select from '../../components/ui/Select'
-import Button from '../../components/ui/Button'
+import { useState } from "react";
+import { User, Phone, MapPin, Mail } from "lucide-react";
+import Input from "../../components/ui/Input";
+import Select from "../../components/ui/Select";
+import Button from "../../components/ui/Button";
 
 const PROJECT_TYPES = [
-  { value: 'metal_fabrication', label: 'Metal Fabrication' },
-  { value: 'structural_steel', label: 'Structural Steel' },
-  { value: 'welding_repairs', label: 'Welding & Repairs' },
-  { value: 'gates_railings', label: 'Gates & Railings' },
-  { value: 'stairs_balustrades', label: 'Stairs & Balustrades' },
-  { value: 'trailers_frames', label: 'Trailers & Frames' },
-  { value: 'custom_metalwork', label: 'Custom Metalwork' },
-  { value: 'installation', label: 'Installation & Fitting' },
-  { value: 'maintenance', label: 'Metal Maintenance' },
-  { value: 'other', label: 'Other' },
-]
+  { value: "metal_fabrication", label: "Metal Fabrication" },
+  { value: "structural_steel", label: "Structural Steel" },
+  { value: "welding_repairs", label: "Welding & Repairs" },
+  { value: "gates_railings", label: "Gates & Railings" },
+  { value: "stairs_balustrades", label: "Stairs & Balustrades" },
+  { value: "trailers_frames", label: "Trailers & Frames" },
+  { value: "custom_metalwork", label: "Custom Metalwork" },
+  { value: "installation", label: "Installation & Fitting" },
+  { value: "maintenance", label: "Metal Maintenance" },
+  { value: "other", label: "Other" },
+];
 
 const PAYMENT_STATUSES = [
-  { value: 'unpaid',   label: 'Unpaid' },
-  { value: 'partial',  label: 'Partial' },
-  { value: 'paid',     label: 'Paid' },
-]
+  { value: "unpaid", label: "Unpaid" },
+  { value: "partial", label: "Partial" },
+  { value: "paid", label: "Paid" },
+];
 
 const empty = {
-  full_name:      '',
-  email:          '',
-  phone:          '',
-  address:        '',
-  city:           '',
-  project_type:   '',
-  payment_status: '',
-  notes:          '',
-}
+  full_name: "",
+  email: "",
+  phone: "",
+  address: "",
+  city: "",
+  project_type: "",
+  payment_status: "",
+  notes: "",
+};
 
-export default function CustomerForm({ initial = empty, onSubmit, onCancel, loading = false }) {
-  const [form, setForm] = useState(initial)
-  const [errors, setErrors] = useState({})
+export default function CustomerForm({
+  initial = empty,
+  onSubmit,
+  onCancel,
+  loading = false,
+}) {
+  const [form, setForm] = useState(initial);
+  const [errors, setErrors] = useState({});
 
   const set = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }))
-    if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }))
-  }
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+  };
 
   const validate = () => {
-    const e = {}
-    if (!form.full_name.trim())    e.full_name    = 'Full name is required'
-    if (!form.phone.trim())        e.phone        = 'Phone number is required'
-    if (!form.address.trim())      e.address      = 'Address is required'
-    if (!form.project_type)        e.project_type = 'Please select a project type'
-    if (!form.payment_status)      e.payment_status = 'Please select a payment status'
-    return e
-  }
+    const e = {};
+    if (!form.full_name.trim()) e.full_name = "Full name is required";
+    if (!form.phone.trim()) e.phone = "Phone number is required";
+    if (!form.address.trim()) e.address = "Address is required";
+    if (!form.project_type) e.project_type = "Please select a project type";
+    if (!form.payment_status)
+      e.payment_status = "Please select a payment status";
+    return e;
+  };
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    const e2 = validate()
-    if (Object.keys(e2).length) { setErrors(e2); return }
-    onSubmit(form)
-  }
+    e.preventDefault();
+    const e2 = validate();
+    if (Object.keys(e2).length) {
+      setErrors(e2);
+      return;
+    }
+    onSubmit(form);
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-
       {/* ─── Section: Contact info ─── */}
       <div>
         <p className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-4">
@@ -74,7 +82,7 @@ export default function CustomerForm({ initial = empty, onSubmit, onCancel, load
             placeholder="e.g. John Smith or Acme Corp"
             icon={User}
             value={form.full_name}
-            onChange={e => set('full_name', e.target.value)}
+            onChange={(e) => set("full_name", e.target.value)}
             error={errors.full_name}
             required
           />
@@ -85,7 +93,7 @@ export default function CustomerForm({ initial = empty, onSubmit, onCancel, load
               placeholder="+233 20 000 0000"
               icon={Phone}
               value={form.phone}
-              onChange={e => set('phone', e.target.value)}
+              onChange={(e) => set("phone", e.target.value)}
               error={errors.phone}
               required
             />
@@ -95,7 +103,7 @@ export default function CustomerForm({ initial = empty, onSubmit, onCancel, load
               placeholder="customer@example.com"
               icon={Mail}
               value={form.email}
-              onChange={e => set('email', e.target.value)}
+              onChange={(e) => set("email", e.target.value)}
             />
           </div>
         </div>
@@ -112,7 +120,7 @@ export default function CustomerForm({ initial = empty, onSubmit, onCancel, load
             placeholder="12 Ring Road Central"
             icon={MapPin}
             value={form.address}
-            onChange={e => set('address', e.target.value)}
+            onChange={(e) => set("address", e.target.value)}
             error={errors.address}
             required
           />
@@ -120,7 +128,7 @@ export default function CustomerForm({ initial = empty, onSubmit, onCancel, load
             label="City / Area"
             placeholder="Accra"
             value={form.city}
-            onChange={e => set('city', e.target.value)}
+            onChange={(e) => set("city", e.target.value)}
           />
         </div>
       </div>
@@ -137,7 +145,7 @@ export default function CustomerForm({ initial = empty, onSubmit, onCancel, load
               options={PROJECT_TYPES}
               placeholder="Select project type…"
               value={form.project_type}
-              onChange={e => set('project_type', e.target.value)}
+              onChange={(e) => set("project_type", e.target.value)}
               error={errors.project_type}
               required
             />
@@ -148,7 +156,7 @@ export default function CustomerForm({ initial = empty, onSubmit, onCancel, load
               options={PAYMENT_STATUSES}
               placeholder="Select status…"
               value={form.payment_status}
-              onChange={e => set('payment_status', e.target.value)}
+              onChange={(e) => set("payment_status", e.target.value)}
               error={errors.payment_status}
               required
             />
@@ -162,12 +170,14 @@ export default function CustomerForm({ initial = empty, onSubmit, onCancel, load
           Notes
         </p>
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-text-secondary">Internal Notes (optional)</label>
+          <label className="text-sm font-medium text-text-secondary">
+            Internal Notes (optional)
+          </label>
           <textarea
             rows={4}
             placeholder="Any additional information about this customer…"
             value={form.notes}
-            onChange={e => set('notes', e.target.value)}
+            onChange={(e) => set("notes", e.target.value)}
             className="w-full bg-surface border border-surface-border rounded-lg py-2 px-3 text-sm
                        text-text-primary placeholder:text-text-muted resize-none
                        focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors"
@@ -186,15 +196,10 @@ export default function CustomerForm({ initial = empty, onSubmit, onCancel, load
         >
           Cancel
         </Button>
-        <Button
-          type="submit"
-          className="flex-1"
-          loading={loading}
-        >
+        <Button type="submit" className="flex-1" loading={loading}>
           Save Customer
         </Button>
       </div>
-
     </form>
-  )
+  );
 }

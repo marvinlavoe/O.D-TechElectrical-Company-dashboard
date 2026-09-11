@@ -6,7 +6,10 @@ import Select from "../../components/ui/Select";
 import Button from "../../components/ui/Button";
 import { formatCurrency } from "../../lib/utils";
 import { isMobileApp } from "../../lib/platform";
-import { createCustomer, listCustomerOptions } from "../../repositories/customerRepository";
+import {
+  createCustomer,
+  listCustomerOptions,
+} from "../../repositories/customerRepository";
 
 const STATUSES = [
   { value: "Draft", label: "Draft" },
@@ -99,7 +102,8 @@ export default function InvoiceForm({
 
   const validate = () => {
     const e = {};
-    if (customerMode === "existing" && !form.customer_id) e.customer_id = "Customer is required";
+    if (customerMode === "existing" && !form.customer_id)
+      e.customer_id = "Customer is required";
     if (!form.date) e.date = "Date is required";
     if (form.items.length === 0) e.items = "At least one item is required";
     return e;
@@ -125,7 +129,11 @@ export default function InvoiceForm({
     e.preventDefault();
     try {
       const e2 = validate();
-      if (canCreateLocalCustomer && customerMode === "new" && !newCustomerName.trim()) {
+      if (
+        canCreateLocalCustomer &&
+        customerMode === "new" &&
+        !newCustomerName.trim()
+      ) {
         e2.customer_id = "Customer name is required";
       }
       if (Object.keys(e2).length) {
@@ -195,19 +203,25 @@ export default function InvoiceForm({
                 required
               />
             )}
-            {canCreateLocalCustomer && <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-primary"
-              onClick={() => {
-                setCustomerMode((mode) => mode === "existing" ? "new" : "existing");
-                setErrors((previous) => ({ ...previous, customer_id: "" }));
-              }}
-            >
-              <UserPlus size={15} />
-              {customerMode === "existing" ? "Type a new customer" : "Choose an existing customer"}
-            </Button>}
+            {canCreateLocalCustomer && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-primary"
+                onClick={() => {
+                  setCustomerMode((mode) =>
+                    mode === "existing" ? "new" : "existing",
+                  );
+                  setErrors((previous) => ({ ...previous, customer_id: "" }));
+                }}
+              >
+                <UserPlus size={15} />
+                {customerMode === "existing"
+                  ? "Type a new customer"
+                  : "Choose an existing customer"}
+              </Button>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Issue Date"

@@ -28,14 +28,29 @@ import {
 } from "../../lib/authRoutes";
 
 const NAV_ITEMS = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", dynamicDashboard: true },
+  {
+    to: "/dashboard",
+    icon: LayoutDashboard,
+    label: "Dashboard",
+    dynamicDashboard: true,
+  },
   { to: "/customers", icon: Users, label: "Customers" },
   { to: "/jobs", icon: Briefcase, label: "Jobs" },
   { to: "/workers", icon: HardHat, label: "Workers", adminOnly: true },
   { to: "/inventory", icon: Package, label: "Inventory", adminOnly: true },
   { to: "/sales", icon: ShoppingCart, label: "Sales", moduleKey: "sales" },
-  { to: "/merchant-hub", icon: Smartphone, label: "Merchant Hub", moduleKey: "merchant_hub" },
-  { to: "/module-access", icon: ShieldCheck, label: "Module Access", adminOnly: true },
+  {
+    to: "/merchant-hub",
+    icon: Smartphone,
+    label: "Merchant Hub",
+    moduleKey: "merchant_hub",
+  },
+  {
+    to: "/module-access",
+    icon: ShieldCheck,
+    label: "Module Access",
+    adminOnly: true,
+  },
   { to: "/billing", icon: CreditCard, label: "Billing", adminOnly: true },
   { to: "/receipts", icon: FileText, label: "Receipts", adminOnly: true },
   { to: "/reports", icon: FileText, label: "Reports", adminOnly: true },
@@ -115,7 +130,11 @@ export default function Sidebar() {
           }`}
         >
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <img src={splashLogo} alt="Phil's Metal Works" className="h-8 w-8 rounded-lg object-cover" />
+            <img
+              src={splashLogo}
+              alt="Phil's Metal Works"
+              className="h-8 w-8 rounded-lg object-cover"
+            />
           </div>
           {!isCollapsed && (
             <div>
@@ -160,14 +179,20 @@ export default function Sidebar() {
             }`}
           >
             <Avatar
-              name={profile?.full_name || session?.user?.email || "Phil's Metal Works"}
+              name={
+                profile?.full_name ||
+                session?.user?.email ||
+                "Phil's Metal Works"
+              }
               src={profile?.avatar_url}
               size="sm"
             />
             {!isCollapsed && (
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-text-primary">
-                  {profile?.full_name || session?.user?.email || "Phil's Metal Works"}
+                  {profile?.full_name ||
+                    session?.user?.email ||
+                    "Phil's Metal Works"}
                 </p>
                 <p className="truncate text-xs text-text-muted">
                   {profile?.specialization || role}

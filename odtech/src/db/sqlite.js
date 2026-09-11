@@ -32,7 +32,10 @@ async function openDatabase() {
   try {
     await migrateDatabase(db);
   } catch (error) {
-    console.error("Database migration failed; customer data remains available:", error);
+    console.error(
+      "Database migration failed; customer data remains available:",
+      error,
+    );
   }
   return db;
 }
@@ -91,8 +94,13 @@ export async function withTransaction(callback) {
       const transactionDb = new Proxy(db, {
         get(target, property) {
           if (property === "run") {
-            return (statement, values = [], _transaction, returnMode, isSQL92) =>
-              target.run(statement, values, false, returnMode, isSQL92);
+            return (
+              statement,
+              values = [],
+              _transaction,
+              returnMode,
+              isSQL92,
+            ) => target.run(statement, values, false, returnMode, isSQL92);
           }
 
           const value = target[property];

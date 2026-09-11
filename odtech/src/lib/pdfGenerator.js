@@ -235,7 +235,9 @@ export async function generateInvoicePDF(data, type = "Invoice") {
   doc.setFont("helvetica", "bold");
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
   doc.text(formatCurrency(grossTotal), 190, finalY + 9, { align: "right" });
-  doc.text(formatCurrency(workmanshipCost), 190, finalY + 17, { align: "right" });
+  doc.text(formatCurrency(workmanshipCost), 190, finalY + 17, {
+    align: "right",
+  });
   doc.text(formatCurrency(discount), 190, finalY + 25, { align: "right" });
   doc.setTextColor(accent[0], accent[1], accent[2]);
   doc.setFontSize(13);
