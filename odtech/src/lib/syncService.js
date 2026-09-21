@@ -268,7 +268,7 @@ async function pullRemoteChangesFromSupabase() {
              discount_minor = excluded.discount_minor,
              gross_total_minor = excluded.gross_total_minor,
              net_total_minor = excluded.net_total_minor,
-             payment_details = excluded.payment_details,
+             payment_details = COALESCE(excluded.payment_details, billing_documents.payment_details),
              status = excluded.status,
              synced = 1,
              updated_at = excluded.updated_at`,

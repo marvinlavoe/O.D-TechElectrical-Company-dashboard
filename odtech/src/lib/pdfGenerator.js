@@ -215,34 +215,76 @@ export async function generateInvoicePDF(data, type = "Invoice") {
     margin: { left: 14, right: 14 },
   });
 
-  // ── Parse payment options (JSON array or legacy plain text) ────
+  // ── Parse payment options (JSON array, object, or legacy plain text) ────
   const finalY = (doc.lastAutoTable?.finalY || 108) + 12;
+  const rawPaymentDetails =
+    data.payment_details ||
+    data.paymentDetails ||
+    data.payment_options ||
+    data.paymentOptions ||
+    null;
+
   let parsedPaymentOptions = [];
   let legacyPaymentNote = "";
-  if (data.payment_details) {
-    try {
-      const parsed = JSON.parse(data.payment_details);
-      if (Array.isArray(parsed)) parsedPaymentOptions = parsed;
-    } catch (_) {
-      legacyPaymentNote = data.payment_details.trim();
+
+  if (rawPaymentDetails) {
+    if (Array.isArray(rawPaymentDetails)) {
+      parsedPaymentOptions = rawPaymentDetails;
+    } else if (typeof rawPaymentDetails === "object" && rawPaymentDetails !== null) {
+      parsedPaymentOptions = [rawPaymentDetails];
+    } else if (typeof rawPaymentDetails === "string") {
+      const trimmed = rawPaymentDetails.trim();
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          parsedPaymentOptions = parsed;
+        } else if (typeof parsed === "object" && parsed !== null) {
+          parsedPaymentOptions = [parsed];
+        } else {
+          legacyPaymentNote = String(parsed).trim();
+        }
+      } catch (_) {
+        legacyPaymentNote = trimmed;
+      }
     }
   }
 
+  // Filter only options that actually have values filled in
+  const filledPaymentOptions = parsedPaymentOptions.filter((opt) => {
+    if (!opt) return false;
+    const name = (opt.accountName || opt.account_name || "").trim();
+    const num = (opt.number || opt.accountNumber || opt.account_number || opt.phone || "").trim();
+    const bank = (opt.bankName || opt.bank_name || opt.bank || "").trim();
+    return name.length > 0 || num.length > 0 || bank.length > 0;
+  });
+
   // Calculate dynamic height for payment notes box
-  const lineH = 7; // pts per line of text
-  let notesBoxHeight = 18; // base: title + padding
-  if (parsedPaymentOptions.length > 0) {
-    parsedPaymentOptions.forEach((opt) => {
-      notesBoxHeight += lineH; // type label
-      if (opt.type === "Mobile Money") notesBoxHeight += lineH * 2; // name + number
-      else notesBoxHeight += lineH * 3; // bank + name + number
-      notesBoxHeight += 3; // gap between options
+  const lineH = 5.5; // mm per line
+  let notesBoxHeight = 16; // base padding for header
+
+  if (filledPaymentOptions.length > 0) {
+    filledPaymentOptions.forEach((opt) => {
+      notesBoxHeight += lineH; // option header
+      const name = (opt.accountName || opt.account_name || "").trim();
+      const num = (opt.number || opt.accountNumber || opt.account_number || opt.phone || "").trim();
+      const bank = (opt.bankName || opt.bank_name || opt.bank || "").trim();
+
+      const optType = opt.type === "Bank Account" ? "Bank Account" : "Mobile Money";
+      if (optType === "Bank Account") {
+        if (bank) notesBoxHeight += lineH;
+        if (name) notesBoxHeight += lineH;
+        if (num) notesBoxHeight += lineH;
+      } else {
+        if (name) notesBoxHeight += lineH;
+        if (num) notesBoxHeight += lineH;
+      }
+      notesBoxHeight += 2.5; // gap between options
     });
   } else if (legacyPaymentNote) {
     const lines = doc.splitTextToSize(legacyPaymentNote, 96);
-    notesBoxHeight += lines.length * lineH;
+    notesBoxHeight += lines.length * lineH + 4;
   } else {
-    notesBoxHeight += lineH; // fallback single line
+    notesBoxHeight += lineH * 2;
   }
   notesBoxHeight = Math.max(notesBoxHeight, 34); // minimum height
 
@@ -259,66 +301,67 @@ export async function generateInvoicePDF(data, type = "Invoice") {
   );
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  doc.text(type === "Quote" ? "QUOTE NOTES" : "PAYMENT DETAILS", 20, finalY + 11);
+  doc.text(type === "Quote" ? "QUOTE NOTES" : "PAYMENT DETAILS", 20, finalY + 9);
 
-  doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+  if (filledPaymentOptions.length > 0) {
+    let curY = finalY + 16;
+    filledPaymentOptions.forEach((opt, idx) => {
+      if (idx > 0) curY += 2; // small gap between options
 
-  if (parsedPaymentOptions.length > 0) {
-    let curY = finalY + 20;
-    parsedPaymentOptions.forEach((opt, idx) => {
-      if (idx > 0) curY += 3; // small gap between options
+      const optType = opt.type === "Bank Account" ? "Bank Account" : "Mobile Money";
+      const name = (opt.accountName || opt.account_name || "").trim();
+      const num = (opt.number || opt.accountNumber || opt.account_number || opt.phone || "").trim();
+      const bank = (opt.bankName || opt.bank_name || opt.bank || "").trim();
 
-      // Type label (bold)
+      // Section header inside box
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(
-        type === "Quote" ? gold[0] : emerald[0],
-        type === "Quote" ? gold[1] : emerald[1],
-        type === "Quote" ? gold[2] : emerald[2],
-      );
-      doc.text(opt.type === "Mobile Money" ? "[ Mobile Money ]" : "[ Bank Account ]", 20, curY);
+      doc.setFontSize(8.5);
+      doc.setTextColor(emeraldDark[0], emeraldDark[1], emeraldDark[2]);
+      doc.text(`• ${optType}`, 20, curY);
       curY += lineH;
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
+      doc.setFontSize(8.5);
       doc.setTextColor(textDark[0], textDark[1], textDark[2]);
 
-      if (opt.type === "Mobile Money") {
-        if (opt.accountName) {
-          doc.text(`Name: ${opt.accountName}`, 22, curY);
+      if (optType === "Bank Account") {
+        if (bank) {
+          doc.text(`Bank: ${bank}`, 24, curY);
           curY += lineH;
         }
-        if (opt.number) {
-          doc.text(`Number: ${opt.number}`, 22, curY);
+        if (name) {
+          doc.text(`Account Name: ${name}`, 24, curY);
+          curY += lineH;
+        }
+        if (num) {
+          doc.text(`Account No: ${num}`, 24, curY);
           curY += lineH;
         }
       } else {
-        if (opt.bankName) {
-          doc.text(`Bank: ${opt.bankName}`, 22, curY);
+        if (name) {
+          doc.text(`Account Name: ${name}`, 24, curY);
           curY += lineH;
         }
-        if (opt.accountName) {
-          doc.text(`Account Name: ${opt.accountName}`, 22, curY);
-          curY += lineH;
-        }
-        if (opt.number) {
-          doc.text(`Account No: ${opt.number}`, 22, curY);
+        if (num) {
+          doc.text(`MoMo Number: ${num}`, 24, curY);
           curY += lineH;
         }
       }
     });
   } else if (legacyPaymentNote) {
-    doc.setFontSize(9);
-    doc.text(doc.splitTextToSize(legacyPaymentNote, 96), 20, finalY + 20);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text(doc.splitTextToSize(legacyPaymentNote, 96), 20, finalY + 16);
   } else {
-    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
     const fallback =
       type === "Quote"
         ? "This quotation is based on the listed services and is subject to confirmation before work begins."
         : "Please confirm payment promptly to keep the project timeline on track.";
-    doc.text(doc.splitTextToSize(fallback, 96), 20, finalY + 20);
+    doc.text(doc.splitTextToSize(fallback, 96), 20, finalY + 16);
   }
 
   // Totals box — align to same finalY with the same (potentially taller) height

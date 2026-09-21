@@ -226,8 +226,13 @@ export default function BillingPage() {
   const handleGeneratePDF = async (row, type) => {
     const pdfData = {
       ...row,
-      customer: row.customers?.name,
-      items: row.document_items || [],
+      payment_details: row.payment_details || row.paymentDetails || "",
+      customer:
+        row.customers?.name ||
+        (typeof row.customer === "string" ? row.customer : row.customer?.name) ||
+        row.customer_name ||
+        "Walk-in Customer",
+      items: row.document_items || row.items || [],
       generated_by:
         profile?.full_name || session?.user?.email || "Account user",
     };

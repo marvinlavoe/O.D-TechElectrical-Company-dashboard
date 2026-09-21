@@ -34,11 +34,24 @@ const newPaymentOption = () => ({
 
 const parsePaymentOptions = (raw) => {
   if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "object" && raw !== null) return [raw];
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed;
+    if (typeof parsed === "object" && parsed !== null) return [parsed];
   } catch (_) {
-    // legacy plain-text — discard
+    if (typeof raw === "string" && raw.trim()) {
+      return [
+        {
+          id: Date.now(),
+          type: "Mobile Money",
+          accountName: raw.trim(),
+          number: "",
+          bankName: "",
+        },
+      ];
+    }
   }
   return [];
 };
@@ -61,9 +74,13 @@ export default function InvoiceForm({
   loading = false,
 }) {
   const [form, setForm] = useState(initial);
-  const [paymentOptions, setPaymentOptions] = useState(
-    () => parsePaymentOptions(initial.payment_details),
-  );
+  const [paymentOptions, setPaymentOptions] = useState(() => {
+    const parsed = parsePaymentOptions(initial.payment_details);
+    if (parsed.length === 0 && !initial.id && type === "Invoice") {
+      return [newPaymentOption()];
+    }
+    return parsed;
+  });
 
   useEffect(() => {
     setForm({
@@ -74,8 +91,13 @@ export default function InvoiceForm({
           ? initial.items
           : [{ id: 1, description: "", qty: 1, price: 0 }],
     });
-    setPaymentOptions(parsePaymentOptions(initial.payment_details));
-  }, [initial]);
+    const parsed = parsePaymentOptions(initial.payment_details);
+    if (parsed.length === 0 && !initial.id && type === "Invoice") {
+      setPaymentOptions([newPaymentOption()]);
+    } else {
+      setPaymentOptions(parsed);
+    }
+  }, [initial?.id, type]);
 
   const [errors, setErrors] = useState({});
   const [customers, setCustomers] = useState([]);
@@ -191,9 +213,17 @@ export default function InvoiceForm({
         ]);
       }
 
+      // Filter to only filled payment options
+      const filledPaymentOptions = paymentOptions.filter((opt) => {
+        const name = (opt.accountName || "").trim();
+        const num = (opt.number || "").trim();
+        const bank = (opt.bankName || "").trim();
+        return name.length > 0 || num.length > 0 || bank.length > 0;
+      });
+
       // Serialize structured payment options → JSON string for storage
       const serializedPaymentDetails =
-        paymentOptions.length > 0 ? JSON.stringify(paymentOptions) : "";
+        filledPaymentOptions.length > 0 ? JSON.stringify(filledPaymentOptions) : "";
 
       await onSubmit({
         ...form,
