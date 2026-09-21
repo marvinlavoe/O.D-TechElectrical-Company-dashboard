@@ -1,5 +1,6 @@
 import { queryDatabase, runDatabase } from "../db/sqlite";
 import { createLocalId, nowIso } from "../lib/localData";
+import { triggerBackgroundSync } from "../lib/syncService";
 
 export async function listCustomers() {
   const result = await queryDatabase(
@@ -20,8 +21,8 @@ export async function createCustomer(customer) {
   const id = createLocalId();
   const timestamp = nowIso();
   await runDatabase(
-    `INSERT INTO customers (id, name, phone, email, address, city, type, status, notes, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO customers (id, name, phone, email, address, city, type, status, notes, synced, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
     [
       id,
       customer.name.trim(),
@@ -36,6 +37,7 @@ export async function createCustomer(customer) {
       timestamp,
     ],
   );
+  triggerBackgroundSync();
   return { ...customer, id, created_at: timestamp, updated_at: timestamp };
 }
 
@@ -43,7 +45,7 @@ export async function updateCustomer(id, customer) {
   const timestamp = nowIso();
   await runDatabase(
     `UPDATE customers
-     SET name = ?, phone = ?, email = ?, address = ?, city = ?, type = ?, status = ?, notes = ?, updated_at = ?
+     SET name = ?, phone = ?, email = ?, address = ?, city = ?, type = ?, status = ?, notes = ?, synced = 0, updated_at = ?
      WHERE id = ?`,
     [
       customer.name.trim(),
@@ -58,5 +60,6 @@ export async function updateCustomer(id, customer) {
       id,
     ],
   );
+  triggerBackgroundSync();
   return { ...customer, id, updated_at: timestamp };
 }

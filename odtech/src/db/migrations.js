@@ -91,9 +91,23 @@ export async function migrateDatabase(db) {
     await db.execute(schemaStatements[3]);
   }
 
+  if (currentVersion >= 5 && currentVersion < 6) {
+    await addColumnIfMissing(db, "customers", "synced", "INTEGER NOT NULL DEFAULT 0");
+    await addColumnIfMissing(db, "billing_documents", "payment_details", "TEXT");
+    await addColumnIfMissing(db, "billing_documents", "synced", "INTEGER NOT NULL DEFAULT 0");
+    await addColumnIfMissing(db, "receipts", "synced", "INTEGER NOT NULL DEFAULT 0");
+    await addColumnIfMissing(db, "inventory", "synced", "INTEGER NOT NULL DEFAULT 0");
+  }
+
   await ensureCustomerSchema(db);
   await db.execute(schemaStatements[2]);
   await db.execute(schemaStatements[3]);
+  await addColumnIfMissing(
+    db,
+    "customers",
+    "synced",
+    "INTEGER NOT NULL DEFAULT 0",
+  );
   await addColumnIfMissing(
     db,
     "billing_documents",
@@ -122,6 +136,30 @@ export async function migrateDatabase(db) {
     db,
     "billing_documents",
     "net_total_minor",
+    "INTEGER NOT NULL DEFAULT 0",
+  );
+  await addColumnIfMissing(
+    db,
+    "billing_documents",
+    "payment_details",
+    "TEXT",
+  );
+  await addColumnIfMissing(
+    db,
+    "billing_documents",
+    "synced",
+    "INTEGER NOT NULL DEFAULT 0",
+  );
+  await addColumnIfMissing(
+    db,
+    "receipts",
+    "synced",
+    "INTEGER NOT NULL DEFAULT 0",
+  );
+  await addColumnIfMissing(
+    db,
+    "inventory",
+    "synced",
     "INTEGER NOT NULL DEFAULT 0",
   );
 

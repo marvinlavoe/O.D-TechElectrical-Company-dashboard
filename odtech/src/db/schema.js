@@ -1,5 +1,5 @@
 export const DATABASE_NAME = "odtech";
-export const DATABASE_VERSION = 5;
+export const DATABASE_VERSION = 6;
 
 export const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS app_settings (
@@ -17,6 +17,7 @@ export const schemaStatements = [
     type TEXT,
     status TEXT NOT NULL DEFAULT 'Active',
     notes TEXT,
+    synced INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )`,
@@ -40,6 +41,7 @@ export const schemaStatements = [
     cost_minor INTEGER NOT NULL DEFAULT 0,
     selling_price_minor INTEGER NOT NULL DEFAULT 0,
     location TEXT,
+    synced INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )`,
@@ -55,7 +57,9 @@ export const schemaStatements = [
     discount_minor INTEGER NOT NULL DEFAULT 0,
     gross_total_minor INTEGER NOT NULL DEFAULT 0,
     net_total_minor INTEGER NOT NULL DEFAULT 0,
+    payment_details TEXT,
     status TEXT NOT NULL,
+    synced INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (customer_id) REFERENCES customers(id)
@@ -77,6 +81,7 @@ export const schemaStatements = [
     amount_minor INTEGER NOT NULL DEFAULT 0,
     method TEXT NOT NULL,
     notes TEXT,
+    synced INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (customer_id) REFERENCES customers(id),

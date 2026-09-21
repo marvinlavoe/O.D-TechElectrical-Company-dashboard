@@ -5,6 +5,7 @@ import {
   nowIso,
   toMinorUnits,
 } from "../lib/localData";
+import { triggerBackgroundSync } from "../lib/syncService";
 
 function mapDocument(row) {
   return {
@@ -15,6 +16,7 @@ function mapDocument(row) {
     discount: fromMinorUnits(row.discount_minor),
     gross_total: fromMinorUnits(row.gross_total_minor),
     net_total: fromMinorUnits(row.net_total_minor),
+    payment_details: row.payment_details || "",
     customer: row.customer_name ? { name: row.customer_name } : null,
     customers: row.customer_name ? { name: row.customer_name } : null,
     items: row.items || [],
@@ -68,12 +70,12 @@ export async function createDocument(form) {
   const timestamp = nowIso();
   const year = form.date.slice(0, 4);
 
-  return withTransaction(async (db) => {
+  const result = await withTransaction(async (db) => {
     const documentNumber = await nextDocumentNumber(db, form.type, year);
     await db.run(
       `INSERT INTO billing_documents
-      (id, document_number, customer_id, type, date, amount_minor, workmanship_cost_minor, discount_percentage, discount_minor, gross_total_minor, net_total_minor, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, document_number, customer_id, type, date, amount_minor, workmanship_cost_minor, discount_percentage, discount_minor, gross_total_minor, net_total_minor, payment_details, status, synced, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
       [
         id,
         documentNumber,
@@ -86,6 +88,7 @@ export async function createDocument(form) {
         toMinorUnits(form.discount),
         toMinorUnits(form.gross_total),
         toMinorUnits(form.net_total),
+        form.payment_details || null,
         form.status,
         timestamp,
         timestamp,
@@ -110,19 +113,23 @@ export async function createDocument(form) {
       ...form,
       id,
       document_number: documentNumber,
+      payment_details: form.payment_details || "",
       created_at: timestamp,
       updated_at: timestamp,
     };
   });
+
+  triggerBackgroundSync();
+  return result;
 }
 
 export async function updateDocument(id, form) {
   const timestamp = nowIso();
 
-  return withTransaction(async (db) => {
+  const result = await withTransaction(async (db) => {
     await db.run(
       `UPDATE billing_documents
-      SET customer_id = ?, date = ?, amount_minor = ?, workmanship_cost_minor = ?, discount_percentage = ?, discount_minor = ?, gross_total_minor = ?, net_total_minor = ?, status = ?, updated_at = ?
+      SET customer_id = ?, date = ?, amount_minor = ?, workmanship_cost_minor = ?, discount_percentage = ?, discount_minor = ?, gross_total_minor = ?, net_total_minor = ?, payment_details = ?, status = ?, synced = 0, updated_at = ?
        WHERE id = ?`,
       [
         form.customer_id,
@@ -133,6 +140,7 @@ export async function updateDocument(id, form) {
         toMinorUnits(form.discount),
         toMinorUnits(form.gross_total),
         toMinorUnits(form.net_total),
+        form.payment_details || null,
         form.status,
         timestamp,
         id,
@@ -154,6 +162,9 @@ export async function updateDocument(id, form) {
       );
     }
 
-    return { ...form, id, updated_at: timestamp };
+    return { ...form, id, payment_details: form.payment_details || "", updated_at: timestamp };
   });
+
+  triggerBackgroundSync();
+  return result;
 }

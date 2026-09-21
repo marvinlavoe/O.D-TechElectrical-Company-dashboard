@@ -116,6 +116,7 @@ export default function BillingPage() {
           gross_total: form.gross_total,
           net_total: form.net_total,
           status: form.status,
+          payment_details: form.payment_details || null,
         },
       ])
       .select();
@@ -178,6 +179,7 @@ export default function BillingPage() {
         gross_total: form.gross_total,
         net_total: form.net_total,
         status: form.status,
+        payment_details: form.payment_details || null,
       })
       .eq("id", editingRecord.id);
 

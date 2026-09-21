@@ -25,6 +25,7 @@ const empty = {
   status: "Draft",
   workmanship_cost: 0,
   discount_percentage: 0,
+  payment_details: "",
   items: [{ id: 1, description: "", qty: 1, price: 0 }],
 };
 
@@ -40,6 +41,7 @@ export default function InvoiceForm({
   useEffect(() => {
     setForm({
       ...initial,
+      payment_details: initial.payment_details ?? "",
       items:
         initial.items?.length > 0
           ? initial.items
@@ -352,6 +354,22 @@ export default function InvoiceForm({
             </div>
           </div>
         </div>
+
+        {/* ─── Payment Details (Invoice only) ─── */}
+        {type === "Invoice" && (
+          <div>
+            <p className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">
+              Payment Details
+            </p>
+            <textarea
+              className="w-full rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+              rows={4}
+              placeholder={"e.g. Bank: GCB Bank Ghana\nAccount Name: Phil's Metal Works\nAccount Number: 1234567890\nPayment Terms: Due within 30 days"}
+              value={form.payment_details ?? ""}
+              onChange={(e) => set("payment_details", e.target.value)}
+            />
+          </div>
+        )}
       </div>
 
       {/* ─── Actions (sticky footer) ─── */}

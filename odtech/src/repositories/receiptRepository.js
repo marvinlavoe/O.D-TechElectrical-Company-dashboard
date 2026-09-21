@@ -5,6 +5,7 @@ import {
   nowIso,
   toMinorUnits,
 } from "../lib/localData";
+import { triggerBackgroundSync } from "../lib/syncService";
 
 export async function listReceipts() {
   const result = await queryDatabase(
@@ -43,12 +44,12 @@ export async function createReceipt(form) {
   const id = createLocalId();
   const timestamp = nowIso();
 
-  return withTransaction(async (db) => {
+  const result = await withTransaction(async (db) => {
     const receiptNumber = await nextReceiptNumber(db, form.date.slice(0, 4));
     await db.run(
       `INSERT INTO receipts
-       (id, receipt_number, customer_id, job_id, date, amount_minor, method, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, receipt_number, customer_id, job_id, date, amount_minor, method, notes, synced, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
       [
         id,
         receiptNumber,
@@ -70,13 +71,16 @@ export async function createReceipt(form) {
       updated_at: timestamp,
     };
   });
+
+  triggerBackgroundSync();
+  return result;
 }
 
 export async function updateReceipt(id, form) {
   const timestamp = nowIso();
   await runDatabase(
     `UPDATE receipts
-     SET customer_id = ?, job_id = ?, date = ?, amount_minor = ?, method = ?, notes = ?, updated_at = ?
+     SET customer_id = ?, job_id = ?, date = ?, amount_minor = ?, method = ?, notes = ?, synced = 0, updated_at = ?
      WHERE id = ?`,
     [
       form.customer_id,
@@ -89,5 +93,6 @@ export async function updateReceipt(id, form) {
       id,
     ],
   );
+  triggerBackgroundSync();
   return { ...form, id, updated_at: timestamp };
 }

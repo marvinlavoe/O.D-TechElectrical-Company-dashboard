@@ -5,6 +5,7 @@ import {
   nowIso,
   toMinorUnits,
 } from "../lib/localData";
+import { triggerBackgroundSync } from "../lib/syncService";
 
 function mapInventory(row) {
   return {
@@ -34,8 +35,8 @@ export async function createInventoryItem(item) {
   const timestamp = nowIso();
   await runDatabase(
     `INSERT INTO inventory
-     (id, name, category, qty, unit, threshold, status, supplier, cost_minor, selling_price_minor, location, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     (id, name, category, qty, unit, threshold, status, supplier, cost_minor, selling_price_minor, location, synced, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
     [
       id,
       item.name.trim(),
@@ -52,6 +53,7 @@ export async function createInventoryItem(item) {
       timestamp,
     ],
   );
+  triggerBackgroundSync();
   return { ...item, id, created_at: timestamp, updated_at: timestamp };
 }
 
@@ -59,7 +61,7 @@ export async function updateInventoryItem(id, item) {
   const timestamp = nowIso();
   await runDatabase(
     `UPDATE inventory
-     SET name = ?, category = ?, qty = ?, unit = ?, threshold = ?, status = ?, supplier = ?, cost_minor = ?, selling_price_minor = ?, location = ?, updated_at = ?
+     SET name = ?, category = ?, qty = ?, unit = ?, threshold = ?, status = ?, supplier = ?, cost_minor = ?, selling_price_minor = ?, location = ?, synced = 0, updated_at = ?
      WHERE id = ?`,
     [
       item.name.trim(),
@@ -76,5 +78,6 @@ export async function updateInventoryItem(id, item) {
       id,
     ],
   );
+  triggerBackgroundSync();
   return { ...item, id, updated_at: timestamp };
 }

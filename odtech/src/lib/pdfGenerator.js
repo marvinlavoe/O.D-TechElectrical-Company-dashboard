@@ -237,7 +237,8 @@ export async function generateInvoicePDF(data, type = "Invoice") {
   const noteText =
     type === "Quote"
       ? "This quotation is based on the listed services and is subject to confirmation before work begins."
-      : "Please confirm payment promptly to keep the project timeline on track.";
+      : (data.payment_details?.trim() ||
+          "Please confirm payment promptly to keep the project timeline on track.");
   doc.text(doc.splitTextToSize(noteText, 96), 20, finalY + 20);
 
   doc.setDrawColor(border[0], border[1], border[2]);
