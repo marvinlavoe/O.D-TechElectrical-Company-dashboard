@@ -1,67 +1,83 @@
-import { useState } from 'react'
-import { Package, Hash, Tag, AlertTriangle, DollarSign } from 'lucide-react'
-import Input from '../../components/ui/Input'
-import Select from '../../components/ui/Select'
-import Button from '../../components/ui/Button'
+import { useState } from "react";
+import { Package, Hash, Tag, AlertTriangle, DollarSign } from "lucide-react";
+import Input from "../../components/ui/Input";
+import Select from "../../components/ui/Select";
+import Button from "../../components/ui/Button";
 
 const CATEGORIES = [
-  { value: 'Cables', label: 'Cables & Wiring' },
-  { value: 'Breakers', label: 'Breakers & Panels' },
-  { value: 'Connectors', label: 'Connectors & Terminals' },
-  { value: 'Lighting', label: 'Lighting Fixtures' },
-  { value: 'Tools', label: 'Tools & Equipment' },
-  { value: 'Other', label: 'Other' },
-]
+  { value: "Welding Electrodes", label: "Welding Electrodes" },
+  { value: "Welding Wire", label: "Welding Wire & Rods" },
+  { value: "Welding Gas", label: "Welding Gas" },
+  { value: "Abrasives", label: "Grinding & Cutting Abrasives" },
+  { value: "Safety Gear", label: "Welding Safety Gear" },
+  { value: "Steel Materials", label: "Steel & Metal Materials" },
+  { value: "Welding Tools", label: "Welding Tools & Equipment" },
+  { value: "Other", label: "Other" },
+];
 
 const UNITS = [
-  { value: 'ft', label: 'Feet (ft)' },
-  { value: 'm', label: 'Meters (m)' },
-  { value: 'pcs', label: 'Pieces (pcs)' },
-  { value: 'box', label: 'Boxes (box)' },
-  { value: 'pack', label: 'Packs (pack)' },
-]
+  { value: "ft", label: "Feet (ft)" },
+  { value: "m", label: "Meters (m)" },
+  { value: "pcs", label: "Pieces (pcs)" },
+  { value: "box", label: "Boxes (box)" },
+  { value: "pack", label: "Packs (pack)" },
+];
 
 const empty = {
-  name: '',
-  category: 'Cables',
-  qty: '',
-  unit: 'pcs',
-  threshold: '',
-  location: '',
-  supplier: '',
-  cost: '',
-  selling_price: ''
-}
+  name: "",
+  category: "Welding Electrodes",
+  qty: "",
+  unit: "pcs",
+  threshold: "",
+  location: "",
+  supplier: "",
+  cost: "",
+  selling_price: "",
+};
 
-export default function InventoryForm({ initial = empty, onSubmit, onCancel, loading = false }) {
-  const [form, setForm] = useState(initial)
-  const [errors, setErrors] = useState({})
+export default function InventoryForm({
+  initial = empty,
+  onSubmit,
+  onCancel,
+  loading = false,
+}) {
+  const [form, setForm] = useState(initial);
+  const [errors, setErrors] = useState({});
 
   const set = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }))
-    if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }))
-  }
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+  };
 
   const validate = () => {
-    const e = {}
-    if (!form.name.trim()) e.name = 'Item name is required'
-    if (form.qty === '' || isNaN(form.qty)) e.qty = 'Valid quantity is required'
-    if (form.threshold === '' || isNaN(form.threshold)) e.threshold = 'Valid threshold is required'
-    if (form.cost !== '' && (isNaN(form.cost) || Number(form.cost) < 0)) e.cost = 'Cost price must be a valid non-negative amount'
-    if (form.selling_price !== '' && (isNaN(form.selling_price) || Number(form.selling_price) < 0)) e.selling_price = 'Selling price must be a valid non-negative amount'
-    return e
-  }
+    const e = {};
+    if (!form.name.trim()) e.name = "Item name is required";
+    if (form.qty === "" || isNaN(form.qty))
+      e.qty = "Valid quantity is required";
+    if (form.threshold === "" || isNaN(form.threshold))
+      e.threshold = "Valid threshold is required";
+    if (form.cost !== "" && (isNaN(form.cost) || Number(form.cost) < 0))
+      e.cost = "Cost price must be a valid non-negative amount";
+    if (
+      form.selling_price !== "" &&
+      (isNaN(form.selling_price) || Number(form.selling_price) < 0)
+    )
+      e.selling_price = "Selling price must be a valid non-negative amount";
+    return e;
+  };
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    const e2 = validate()
-    if (Object.keys(e2).length) { setErrors(e2); return }
-    onSubmit(form)
-  }
+    e.preventDefault();
+    const e2 = validate();
+    if (Object.keys(e2).length) {
+      setErrors(e2);
+      return;
+    }
+    onSubmit(form);
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-
       {/* ─── Item Basics ─── */}
       <div>
         <p className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-4">
@@ -73,7 +89,7 @@ export default function InventoryForm({ initial = empty, onSubmit, onCancel, loa
             placeholder="e.g. 12 AWG Copper Wire"
             icon={Package}
             value={form.name}
-            onChange={e => set('name', e.target.value)}
+            onChange={(e) => set("name", e.target.value)}
             error={errors.name}
             required
           />
@@ -83,14 +99,14 @@ export default function InventoryForm({ initial = empty, onSubmit, onCancel, loa
               label="Category"
               options={CATEGORIES}
               value={form.category}
-              onChange={e => set('category', e.target.value)}
+              onChange={(e) => set("category", e.target.value)}
               required
             />
             <Select
               label="Unit of Measure"
               options={UNITS}
               value={form.unit}
-              onChange={e => set('unit', e.target.value)}
+              onChange={(e) => set("unit", e.target.value)}
               required
             />
           </div>
@@ -109,7 +125,7 @@ export default function InventoryForm({ initial = empty, onSubmit, onCancel, loa
             placeholder="0"
             icon={Hash}
             value={form.qty}
-            onChange={e => set('qty', e.target.value)}
+            onChange={(e) => set("qty", e.target.value)}
             error={errors.qty}
             required
           />
@@ -119,7 +135,7 @@ export default function InventoryForm({ initial = empty, onSubmit, onCancel, loa
             placeholder="10"
             icon={AlertTriangle}
             value={form.threshold}
-            onChange={e => set('threshold', e.target.value)}
+            onChange={(e) => set("threshold", e.target.value)}
             error={errors.threshold}
             required
           />
@@ -137,7 +153,7 @@ export default function InventoryForm({ initial = empty, onSubmit, onCancel, loa
             placeholder="e.g. ElectroSupply Inc."
             icon={Tag}
             value={form.supplier}
-            onChange={e => set('supplier', e.target.value)}
+            onChange={(e) => set("supplier", e.target.value)}
           />
           <div className="grid grid-cols-2 gap-4">
             <Input
@@ -146,7 +162,7 @@ export default function InventoryForm({ initial = empty, onSubmit, onCancel, loa
               step="0.01"
               placeholder="0.00"
               value={form.cost}
-              onChange={e => set('cost', e.target.value)}
+              onChange={(e) => set("cost", e.target.value)}
               error={errors.cost}
             />
             <Input
@@ -156,7 +172,7 @@ export default function InventoryForm({ initial = empty, onSubmit, onCancel, loa
               placeholder="0.00"
               icon={DollarSign}
               value={form.selling_price}
-              onChange={e => set('selling_price', e.target.value)}
+              onChange={(e) => set("selling_price", e.target.value)}
               error={errors.selling_price}
             />
           </div>
@@ -165,7 +181,7 @@ export default function InventoryForm({ initial = empty, onSubmit, onCancel, loa
               label="Storage Location"
               placeholder="e.g. Aisle 3, Shelf B"
               value={form.location}
-              onChange={e => set('location', e.target.value)}
+              onChange={(e) => set("location", e.target.value)}
             />
           </div>
         </div>
@@ -173,7 +189,13 @@ export default function InventoryForm({ initial = empty, onSubmit, onCancel, loa
 
       {/* ─── Actions ─── */}
       <div className="flex gap-3 pt-2">
-        <Button type="button" variant="outline" className="flex-1" onClick={onCancel} disabled={loading}>
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1"
+          onClick={onCancel}
+          disabled={loading}
+        >
           Cancel
         </Button>
         <Button type="submit" className="flex-1" loading={loading}>
@@ -181,5 +203,5 @@ export default function InventoryForm({ initial = empty, onSubmit, onCancel, loa
         </Button>
       </div>
     </form>
-  )
+  );
 }

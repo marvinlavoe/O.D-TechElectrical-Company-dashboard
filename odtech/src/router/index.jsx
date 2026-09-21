@@ -1,54 +1,58 @@
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
-import ProtectedRoute from './ProtectedRoute'
-import AdminRoute from './AdminRoute'
-import ModuleRoute from './ModuleRoute'
-import AppLayout from '../components/layout/AppLayout'
-import AuthLayout from '../components/layout/AuthLayout'
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Navigate,
+} from "react-router-dom";
+import ProtectedRoute from "./ProtectedRoute";
+import AdminRoute from "./AdminRoute";
+import ModuleRoute from "./ModuleRoute";
+import AppLayout from "../components/layout/AppLayout";
+import AuthLayout from "../components/layout/AuthLayout";
 
 // Auth
-import SplashPage        from '../pages/auth/SplashPage'
-import LoginPage         from '../pages/auth/LoginPage'
-import SignupPage        from '../pages/auth/SignupPage'
-import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage'
+import SplashPage from "../pages/auth/SplashPage";
+import LoginPage from "../pages/auth/LoginPage";
+import SignupPage from "../pages/auth/SignupPage";
+import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
 
 // Dashboard
-import AdminDashboard  from '../pages/dashboard/AdminDashboard'
-import WorkerDashboard from '../pages/dashboard/WorkerDashboard'
+import AdminDashboard from "../pages/dashboard/AdminDashboard";
+import WorkerDashboard from "../pages/dashboard/WorkerDashboard";
 
 // Customers
-import CustomersPage      from '../pages/customers/CustomersPage'
-import CustomerDetailPage from '../pages/customers/CustomerDetailPage'
+import CustomersPage from "../pages/customers/CustomersPage";
+import CustomerDetailPage from "../pages/customers/CustomerDetailPage";
 
 // Jobs
-import JobsPage      from '../pages/jobs/JobsPage'
-import JobDetailPage from '../pages/jobs/JobDetailPage'
+import JobsPage from "../pages/jobs/JobsPage";
+import JobDetailPage from "../pages/jobs/JobDetailPage";
 
 // Workers
-import WorkersPage      from '../pages/workers/WorkersPage'
-import WorkerDetailPage from '../pages/workers/WorkerDetailPage'
+import WorkersPage from "../pages/workers/WorkersPage";
+import WorkerDetailPage from "../pages/workers/WorkerDetailPage";
 
 // Other modules
-import InventoryPage from '../pages/inventory/InventoryPage'
-import InventoryDetailPage from '../pages/inventory/InventoryDetailPage'
-import BillingPage   from '../pages/billing/BillingPage'
-import ReceiptsPage  from '../pages/receipts/ReceiptsPage'
-import ReportsPage   from '../pages/reports/ReportsPage'
-import SalesPage     from '../pages/sales/SalesPage'
-import MerchantHubPage from '../pages/merchant-hub/MerchantHubPage'
-import ModuleAccessPage from '../pages/admin/ModuleAccessPage'
-import ChatPage      from '../pages/chat/ChatPage'
-import SettingsPage  from '../pages/settings/SettingsPage'
-import { isMobileApp } from '../lib/platform'
+import InventoryPage from "../pages/inventory/InventoryPage";
+import InventoryDetailPage from "../pages/inventory/InventoryDetailPage";
+import BillingPage from "../pages/billing/BillingPage";
+import ReceiptsPage from "../pages/receipts/ReceiptsPage";
+import ReportsPage from "../pages/reports/ReportsPage";
+import SalesPage from "../pages/sales/SalesPage";
+import MerchantHubPage from "../pages/merchant-hub/MerchantHubPage";
+import ModuleAccessPage from "../pages/admin/ModuleAccessPage";
+import ChatPage from "../pages/chat/ChatPage";
+import SettingsPage from "../pages/settings/SettingsPage";
+import { isMobileApp } from "../lib/platform";
 
 const router = createBrowserRouter([
-  { path: '/', element: <SplashPage /> },
+  { path: "/", element: <SplashPage /> },
 
   {
     element: <AuthLayout />,
     children: [
-      { path: '/login',           element: <LoginPage /> },
-      { path: '/signup',          element: <SignupPage /> },
-      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      { path: "/login", element: <LoginPage /> },
+      { path: "/signup", element: <SignupPage /> },
+      { path: "/forgot-password", element: <ForgotPasswordPage /> },
     ],
   },
 
@@ -59,29 +63,119 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true,                    path: '/dashboard',        element: isMobileApp ? <Navigate to="/billing" replace /> : <AdminRoute><AdminDashboard /></AdminRoute> },
-      { path: '/dashboard/worker',       element: <WorkerDashboard /> },
-      { path: '/customers',              element: <CustomersPage /> },
-      { path: '/customers/:id',          element: <CustomerDetailPage /> },
-      { path: '/jobs',                   element: <JobsPage /> },
-      { path: '/jobs/:id',               element: <JobDetailPage /> },
-      { path: '/workers',                element: <AdminRoute><WorkersPage /></AdminRoute> },
-      { path: '/workers/:id',            element: <AdminRoute><WorkerDetailPage /></AdminRoute> },
-      { path: '/inventory',              element: <AdminRoute><InventoryPage /></AdminRoute> },
-      { path: '/inventory/:id',          element: <AdminRoute><InventoryDetailPage /></AdminRoute> },
-      { path: '/sales',                  element: <ModuleRoute moduleKey="sales"><SalesPage /></ModuleRoute> },
-      { path: '/merchant-hub',           element: <ModuleRoute moduleKey="merchant_hub"><MerchantHubPage /></ModuleRoute> },
-      { path: '/module-access',          element: <AdminRoute><ModuleAccessPage /></AdminRoute> },
-      { path: '/billing',                element: <AdminRoute><BillingPage /></AdminRoute> },
-      { path: '/receipts',               element: <AdminRoute><ReceiptsPage /></AdminRoute> },
-      { path: '/reports',                element: <AdminRoute><ReportsPage /></AdminRoute> },
-      { path: '/chat',                   element: <ChatPage /> },
-      { path: '/settings',               element: <SettingsPage /> },
-      { path: '*',                       element: <Navigate to={isMobileApp ? '/billing' : '/dashboard'} replace /> },
+      {
+        path: "/dashboard",
+        element: isMobileApp ? (
+          <Navigate to="/billing" replace />
+        ) : (
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        ),
+      },
+      { path: "/dashboard/worker", element: <WorkerDashboard /> },
+      { path: "/customers", element: <CustomersPage /> },
+      { path: "/customers/:id", element: <CustomerDetailPage /> },
+      { path: "/jobs", element: <JobsPage /> },
+      { path: "/jobs/:id", element: <JobDetailPage /> },
+      {
+        path: "/workers",
+        element: (
+          <AdminRoute>
+            <WorkersPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/workers/:id",
+        element: (
+          <AdminRoute>
+            <WorkerDetailPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/inventory",
+        element: isMobileApp ? (
+          <InventoryPage />
+        ) : (
+          <AdminRoute>
+            <InventoryPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/inventory/:id",
+        element: (
+          <AdminRoute>
+            <InventoryDetailPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/sales",
+        element: (
+          <ModuleRoute moduleKey="sales">
+            <SalesPage />
+          </ModuleRoute>
+        ),
+      },
+      {
+        path: "/merchant-hub",
+        element: (
+          <ModuleRoute moduleKey="merchant_hub">
+            <MerchantHubPage />
+          </ModuleRoute>
+        ),
+      },
+      {
+        path: "/module-access",
+        element: (
+          <AdminRoute>
+            <ModuleAccessPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/billing",
+        element: isMobileApp ? (
+          <BillingPage />
+        ) : (
+          <AdminRoute>
+            <BillingPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/receipts",
+        element: isMobileApp ? (
+          <ReceiptsPage />
+        ) : (
+          <AdminRoute>
+            <ReceiptsPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/reports",
+        element: (
+          <AdminRoute>
+            <ReportsPage />
+          </AdminRoute>
+        ),
+      },
+      { path: "/chat", element: <ChatPage /> },
+      { path: "/settings", element: <SettingsPage /> },
+      {
+        path: "*",
+        element: (
+          <Navigate to={isMobileApp ? "/billing" : "/dashboard"} replace />
+        ),
+      },
     ],
   },
-])
+]);
 
 export default function Router() {
-  return <RouterProvider router={router} />
+  return <RouterProvider router={router} />;
 }

@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "cap:sync": "npm run build && npx cap sync",
-    "android:build": "npm run build && npx cap sync android && cd android && gradlew.bat assembleDebug"
+    "android:build": "npm run build && npx cap sync android && cd android && gradlew.bat assembleDebug",
+    "android:release": "npm run build && npx cap sync android && cd android && gradlew.bat assembleDebug"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^8.1.1",

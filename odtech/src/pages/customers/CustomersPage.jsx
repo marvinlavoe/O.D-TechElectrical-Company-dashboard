@@ -75,7 +75,7 @@ export default function CustomersPage() {
       }
     } catch (err) {
       console.error("Customers fetch exception:", err);
-      toast.error("Error loading customers. Check console.");
+      toast.error(err?.message || "Error loading customers");
     } finally {
       setLoading(false);
     }

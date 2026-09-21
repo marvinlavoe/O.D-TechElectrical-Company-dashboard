@@ -87,7 +87,12 @@ export async function migrateDatabase(db) {
     );
   }
 
+  if (currentVersion >= 4 && currentVersion < 5) {
+    await db.execute(schemaStatements[3]);
+  }
+
   await ensureCustomerSchema(db);
+  await db.execute(schemaStatements[2]);
   await db.execute(schemaStatements[3]);
   await addColumnIfMissing(
     db,

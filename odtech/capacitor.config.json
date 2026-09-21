@@ -3,6 +3,11 @@
   "appName": "Phils Metal Works",
   "webDir": "dist",
   "bundledWebRuntime": false,
+  "plugins": {
+    "CapacitorSQLite": {
+      "androidIsEncryption": false
+    }
+  },
   "android": {
     "allowMixedContent": false
   }

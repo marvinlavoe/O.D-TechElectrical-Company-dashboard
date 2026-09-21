@@ -1,58 +1,78 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Plus } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
-import toast from 'react-hot-toast'
-import DataTable from '../../components/ui/DataTable'
-import Button from '../../components/ui/Button'
-import Badge from '../../components/ui/Badge'
-import Drawer from '../../components/ui/Drawer'
-import InventoryForm from './InventoryForm'
-import { formatCurrency } from '../../lib/utils'
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Plus } from "lucide-react";
+import { supabase } from "../../lib/supabase";
+import toast from "react-hot-toast";
+import DataTable from "../../components/ui/DataTable";
+import Button from "../../components/ui/Button";
+import Badge from "../../components/ui/Badge";
+import Drawer from "../../components/ui/Drawer";
+import InventoryForm from "./InventoryForm";
+import { formatCurrency } from "../../lib/utils";
+import { isMobileApp } from "../../lib/platform";
+import {
+  createInventoryItem,
+  listInventory,
+} from "../../repositories/inventoryRepository";
 
 function getUnitProfit(item) {
-  return Number(item?.selling_price || 0) - Number(item?.cost || 0)
+  return Number(item?.selling_price || 0) - Number(item?.cost || 0);
 }
 
 function getExpectedGrossProfit(item) {
-  return getUnitProfit(item) * Number(item?.qty || 0)
+  return getUnitProfit(item) * Number(item?.qty || 0);
 }
 
 export default function InventoryPage() {
-  const navigate = useNavigate()
-  const [inventory, setInventory] = useState([])
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const navigate = useNavigate();
+  const [inventory, setInventory] = useState([]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const fetchInventory = async () => {
-    setLoading(true)
+    setLoading(true);
+    if (isMobileApp) {
+      try {
+        setInventory(await listInventory());
+      } catch (error) {
+        toast.error(error.message || "Failed to load inventory");
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     const { data, error } = await supabase
-      .from('inventory')
-      .select('*')
-      .order('created_at', { ascending: false })
+      .from("inventory")
+      .select("*")
+      .order("created_at", { ascending: false });
 
     if (error) {
-      toast.error('Failed to load inventory')
-      console.error(error)
+      toast.error("Failed to load inventory");
+      console.error(error);
     } else {
-      setInventory(data || [])
+      setInventory(data || []);
     }
-    setLoading(false)
-  }
+    setLoading(false);
+  };
 
   useEffect(() => {
     queueMicrotask(() => {
-      fetchInventory()
-    })
-  }, [])
+      fetchInventory();
+    });
+  }, []);
 
   const handleAdd = async (form) => {
-    setSaving(true)
-    
+    setSaving(true);
+
     // Calculate stock status dynamically
-    const status = parseInt(form.qty, 10) <= parseInt(form.threshold, 10) ? 'Low Stock' : 'In Stock'
-    
+    const status =
+      parseInt(form.qty, 10) <= parseInt(form.threshold, 10)
+        ? "Low Stock"
+        : "In Stock";
+
     const newItem = {
       name: form.name,
       category: form.category,
@@ -63,74 +83,113 @@ export default function InventoryPage() {
       supplier: form.supplier || null,
       cost: form.cost ? parseFloat(form.cost) : 0,
       selling_price: form.selling_price ? parseFloat(form.selling_price) : 0,
-      location: form.location || null
+      location: form.location || null,
+    };
+
+    if (isMobileApp) {
+      try {
+        const data = await createInventoryItem(newItem);
+        toast.success("Inventory item added successfully");
+        setInventory((prev) => [data, ...prev]);
+        setDrawerOpen(false);
+      } catch (error) {
+        toast.error(error.message || "Failed to save inventory item");
+        console.error(error);
+      } finally {
+        setSaving(false);
+      }
+      return;
     }
 
     const { data, error } = await supabase
-      .from('inventory')
+      .from("inventory")
       .insert([newItem])
-      .select()
+      .select();
 
-    setSaving(false)
+    setSaving(false);
 
     if (error) {
-      toast.error(error.message)
+      toast.error(error.message);
     } else {
-      toast.success('Inventory item added successfully')
-      setInventory(prev => [data[0], ...prev])
-      setDrawerOpen(false)
+      toast.success("Inventory item added successfully");
+      setInventory((prev) => [data[0], ...prev]);
+      setDrawerOpen(false);
     }
-  }
+  };
 
   const columns = [
-    { key: 'name', header: 'Name' },
-    { key: 'category', header: 'Category' },
-    { key: 'qty', header: 'Qty', render: (val, row) => `${val} ${row.unit}` },
-    { key: 'cost', header: 'Cost Price', render: (val) => formatCurrency(val) },
-    { key: 'selling_price', header: 'Selling Price', render: (val) => formatCurrency(val) },
+    { key: "name", header: "Name" },
+    { key: "category", header: "Category" },
+    { key: "qty", header: "Qty", render: (val, row) => `${val} ${row.unit}` },
+    { key: "cost", header: "Cost Price", render: (val) => formatCurrency(val) },
     {
-      key: 'unit_profit',
-      header: 'Unit Profit',
+      key: "selling_price",
+      header: "Selling Price",
+      render: (val) => formatCurrency(val),
+    },
+    {
+      key: "unit_profit",
+      header: "Unit Profit",
       render: (_, row) => {
-        const profit = getUnitProfit(row)
+        const profit = getUnitProfit(row);
         return (
-          <span className={`font-medium ${profit >= 0 ? 'text-success' : 'text-danger'}`}>
+          <span
+            className={`font-medium ${profit >= 0 ? "text-success" : "text-danger"}`}
+          >
             {formatCurrency(profit)}
           </span>
-        )
+        );
       },
-      searchValue: row => `${row.cost ?? ''} ${row.selling_price ?? ''}`,
+      searchValue: (row) => `${row.cost ?? ""} ${row.selling_price ?? ""}`,
     },
     {
-      key: 'expected_gross_profit',
-      header: 'Expected Gross Profit',
+      key: "expected_gross_profit",
+      header: "Expected Gross Profit",
       render: (_, row) => {
-        const grossProfit = getExpectedGrossProfit(row)
+        const grossProfit = getExpectedGrossProfit(row);
         return (
-          <span className={`font-medium ${grossProfit >= 0 ? 'text-success' : 'text-danger'}`}>
+          <span
+            className={`font-medium ${grossProfit >= 0 ? "text-success" : "text-danger"}`}
+          >
             {formatCurrency(grossProfit)}
           </span>
-        )
+        );
       },
-      searchValue: row => String(getExpectedGrossProfit(row)),
+      searchValue: (row) => String(getExpectedGrossProfit(row)),
     },
-    { key: 'threshold', header: 'Threshold' },
-    { key: 'status', header: 'Status', render: (val) => (
-        <Badge label={val} color={val === 'Low Stock' ? 'danger' : 'success'} />
-      ) 
+    { key: "threshold", header: "Threshold" },
+    {
+      key: "status",
+      header: "Status",
+      render: (val) => (
+        <Badge label={val} color={val === "Low Stock" ? "danger" : "success"} />
+      ),
     },
-    { key: 'actions', header: '', render: (_, row) => (
-        <Button variant="ghost" size="sm" onClick={() => navigate(`/inventory/${row.id}`)}>View</Button>
-      ) 
-    }
-  ]
+    {
+      key: "actions",
+      header: "",
+      render: (_, row) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate(`/inventory/${row.id}`)}
+        >
+          View
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center bg-surface pb-2">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Inventory Management</h1>
-          <p className="text-sm text-text-muted mt-0.5">{loading ? 'Loading...' : `${inventory.length} tracked items`}</p>
+          <h1 className="text-2xl font-bold text-text-primary">
+            Inventory Management
+          </h1>
+          <p className="text-sm text-text-muted mt-0.5">
+            {loading ? "Loading..." : `${inventory.length} tracked items`}
+          </p>
         </div>
         <Button onClick={() => setDrawerOpen(true)}>
           <Plus size={16} className="mr-2" /> Add Item
@@ -153,5 +212,5 @@ export default function InventoryPage() {
         />
       </Drawer>
     </div>
-  )
+  );
 }

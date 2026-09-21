@@ -1,8 +1,8 @@
 import { jsPDF } from "jspdf";
 import { autoTable } from "jspdf-autotable";
-import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { formatCurrency, formatDate } from "./utils";
+import { isMobileApp } from "./platform";
 import philLogo from "../assets/phil-logo.png";
 
 let cachedReceiptLogo = null;
@@ -34,7 +34,7 @@ function loadImageAsDataUrl(src) {
 }
 
 async function savePdf(doc, filename) {
-  if (!Capacitor.isNativePlatform()) {
+  if (!isMobileApp) {
     doc.save(filename);
     return;
   }
@@ -44,11 +44,32 @@ async function savePdf(doc, filename) {
     throw new Error("Unable to prepare the PDF file");
   }
 
-  await Filesystem.writeFile({
-    path: filename,
-    data: base64,
-    directory: Directory.Documents,
-  });
+  try {
+    await Filesystem.writeFile({
+      path: `Download/${filename}`,
+      data: base64,
+      directory: Directory.ExternalStorage,
+      recursive: true,
+    });
+  } catch (error) {
+    console.warn("Unable to save PDF to Downloads; using Documents", error);
+    try {
+      await Filesystem.writeFile({
+        path: filename,
+        data: base64,
+        directory: Directory.Documents,
+        recursive: true,
+      });
+    } catch (documentsError) {
+      console.warn("Unable to save PDF to Documents; using app cache", documentsError);
+      await Filesystem.writeFile({
+        path: filename,
+        data: base64,
+        directory: Directory.Cache,
+        recursive: true,
+      });
+    }
+  }
 }
 
 export async function generateInvoicePDF(data, type = "Invoice") {

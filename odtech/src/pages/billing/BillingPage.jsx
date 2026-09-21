@@ -232,10 +232,10 @@ export default function BillingPage() {
 
     try {
       await generateInvoicePDF(pdfData, type);
-      toast.success(`${type} PDF saved to Documents`);
+      toast.success(`${type} PDF saved to Downloads`);
     } catch (error) {
       console.error(error);
-      toast.error(`Failed to generate ${type.toLowerCase()} PDF`);
+      toast.error(error?.message || `Failed to generate ${type.toLowerCase()} PDF`);
     }
   };
 

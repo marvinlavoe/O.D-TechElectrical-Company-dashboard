@@ -1,5 +1,5 @@
 export const DATABASE_NAME = "odtech";
-export const DATABASE_VERSION = 4;
+export const DATABASE_VERSION = 5;
 
 export const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS app_settings (
@@ -27,6 +27,21 @@ export const schemaStatements = [
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS inventory (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    qty INTEGER NOT NULL DEFAULT 0,
+    unit TEXT NOT NULL,
+    threshold INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL,
+    supplier TEXT,
+    cost_minor INTEGER NOT NULL DEFAULT 0,
+    selling_price_minor INTEGER NOT NULL DEFAULT 0,
+    location TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS billing_documents (
     id TEXT PRIMARY KEY NOT NULL,
