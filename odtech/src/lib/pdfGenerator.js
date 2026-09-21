@@ -215,14 +215,43 @@ export async function generateInvoicePDF(data, type = "Invoice") {
     margin: { left: 14, right: 14 },
   });
 
+  // ── Parse payment options (JSON array or legacy plain text) ────
   const finalY = (doc.lastAutoTable?.finalY || 108) + 12;
+  let parsedPaymentOptions = [];
+  let legacyPaymentNote = "";
+  if (data.payment_details) {
+    try {
+      const parsed = JSON.parse(data.payment_details);
+      if (Array.isArray(parsed)) parsedPaymentOptions = parsed;
+    } catch (_) {
+      legacyPaymentNote = data.payment_details.trim();
+    }
+  }
+
+  // Calculate dynamic height for payment notes box
+  const lineH = 7; // pts per line of text
+  let notesBoxHeight = 18; // base: title + padding
+  if (parsedPaymentOptions.length > 0) {
+    parsedPaymentOptions.forEach((opt) => {
+      notesBoxHeight += lineH; // type label
+      if (opt.type === "Mobile Money") notesBoxHeight += lineH * 2; // name + number
+      else notesBoxHeight += lineH * 3; // bank + name + number
+      notesBoxHeight += 3; // gap between options
+    });
+  } else if (legacyPaymentNote) {
+    const lines = doc.splitTextToSize(legacyPaymentNote, 96);
+    notesBoxHeight += lines.length * lineH;
+  } else {
+    notesBoxHeight += lineH; // fallback single line
+  }
+  notesBoxHeight = Math.max(notesBoxHeight, 34); // minimum height
 
   doc.setFillColor(
     type === "Quote" ? 255 : 232,
     type === "Quote" ? 249 : 244,
     type === "Quote" ? 232 : 242,
   );
-  doc.roundedRect(14, finalY, 108, 34, 8, 8, "F");
+  doc.roundedRect(14, finalY, 108, notesBoxHeight, 8, 8, "F");
   doc.setTextColor(
     type === "Quote" ? gold[0] : emerald[0],
     type === "Quote" ? gold[1] : emerald[1],
@@ -230,19 +259,72 @@ export async function generateInvoicePDF(data, type = "Invoice") {
   );
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  doc.text(type === "Quote" ? "QUOTE NOTES" : "PAYMENT NOTES", 20, finalY + 11);
+  doc.text(type === "Quote" ? "QUOTE NOTES" : "PAYMENT DETAILS", 20, finalY + 11);
+
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  const noteText =
-    type === "Quote"
-      ? "This quotation is based on the listed services and is subject to confirmation before work begins."
-      : (data.payment_details?.trim() ||
-          "Please confirm payment promptly to keep the project timeline on track.");
-  doc.text(doc.splitTextToSize(noteText, 96), 20, finalY + 20);
+  doc.setFontSize(9);
 
+  if (parsedPaymentOptions.length > 0) {
+    let curY = finalY + 20;
+    parsedPaymentOptions.forEach((opt, idx) => {
+      if (idx > 0) curY += 3; // small gap between options
+
+      // Type label (bold)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(
+        type === "Quote" ? gold[0] : emerald[0],
+        type === "Quote" ? gold[1] : emerald[1],
+        type === "Quote" ? gold[2] : emerald[2],
+      );
+      doc.text(opt.type === "Mobile Money" ? "[ Mobile Money ]" : "[ Bank Account ]", 20, curY);
+      curY += lineH;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+
+      if (opt.type === "Mobile Money") {
+        if (opt.accountName) {
+          doc.text(`Name: ${opt.accountName}`, 22, curY);
+          curY += lineH;
+        }
+        if (opt.number) {
+          doc.text(`Number: ${opt.number}`, 22, curY);
+          curY += lineH;
+        }
+      } else {
+        if (opt.bankName) {
+          doc.text(`Bank: ${opt.bankName}`, 22, curY);
+          curY += lineH;
+        }
+        if (opt.accountName) {
+          doc.text(`Account Name: ${opt.accountName}`, 22, curY);
+          curY += lineH;
+        }
+        if (opt.number) {
+          doc.text(`Account No: ${opt.number}`, 22, curY);
+          curY += lineH;
+        }
+      }
+    });
+  } else if (legacyPaymentNote) {
+    doc.setFontSize(9);
+    doc.text(doc.splitTextToSize(legacyPaymentNote, 96), 20, finalY + 20);
+  } else {
+    doc.setFontSize(9);
+    const fallback =
+      type === "Quote"
+        ? "This quotation is based on the listed services and is subject to confirmation before work begins."
+        : "Please confirm payment promptly to keep the project timeline on track.";
+    doc.text(doc.splitTextToSize(fallback, 96), 20, finalY + 20);
+  }
+
+  // Totals box — align to same finalY with the same (potentially taller) height
+  const totalsBoxHeight = Math.max(notesBoxHeight, 42);
   doc.setDrawColor(border[0], border[1], border[2]);
-  doc.roundedRect(128, finalY, 68, 42, 8, 8);
+  doc.roundedRect(128, finalY, 68, totalsBoxHeight, 8, 8);
   doc.setTextColor(textSoft[0], textSoft[1], textSoft[2]);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
@@ -265,7 +347,7 @@ export async function generateInvoicePDF(data, type = "Invoice") {
   doc.setFontSize(13);
   doc.text(amountTotal, 190, finalY + 31, { align: "right" });
 
-  const footerY = Math.min(finalY + 58, 276);
+  const footerY = Math.min(finalY + totalsBoxHeight + 16, 276);
   doc.setDrawColor(border[0], border[1], border[2]);
   doc.line(20, footerY, 88, footerY);
   doc.line(122, footerY, 190, footerY);
@@ -291,7 +373,14 @@ export async function generateInvoicePDF(data, type = "Invoice") {
     align: "right",
   });
 
-  await savePdf(doc, `${type.toLowerCase()}_${documentNumber}.pdf`);
+  // Build filename: type_CustomerName_YYYY-MM-DD.pdf
+  const safeCustomer = customerName
+    .replace(/[^a-zA-Z0-9\s]/g, "")
+    .trim()
+    .replace(/\s+/g, "_")
+    .slice(0, 30) || "Customer";
+  const safeDate = (data.date || new Date().toISOString().split("T")[0]).replace(/-/g, "-");
+  await savePdf(doc, `${type.toLowerCase()}_${safeCustomer}_${safeDate}.pdf`);
 }
 export async function generateReceiptPDF(data) {
   const doc = new jsPDF();

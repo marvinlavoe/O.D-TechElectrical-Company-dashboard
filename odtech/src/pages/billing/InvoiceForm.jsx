@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { FileText, User, Calendar, Plus, Trash2, UserPlus } from "lucide-react";
+import { User, Calendar, Plus, Trash2, UserPlus, CreditCard, Smartphone } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
@@ -19,6 +19,30 @@ const STATUSES = [
   { value: "Overdue", label: "Overdue" },
 ];
 
+const PAYMENT_TYPES = [
+  { value: "Mobile Money", label: "📱 Mobile Money" },
+  { value: "Bank Account", label: "🏦 Bank Account" },
+];
+
+const newPaymentOption = () => ({
+  id: Date.now() + Math.random(),
+  type: "Mobile Money",
+  accountName: "",
+  number: "",
+  bankName: "",
+});
+
+const parsePaymentOptions = (raw) => {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch (_) {
+    // legacy plain-text — discard
+  }
+  return [];
+};
+
 const empty = {
   customer_id: "",
   date: new Date().toISOString().split("T")[0],
@@ -37,6 +61,9 @@ export default function InvoiceForm({
   loading = false,
 }) {
   const [form, setForm] = useState(initial);
+  const [paymentOptions, setPaymentOptions] = useState(
+    () => parsePaymentOptions(initial.payment_details),
+  );
 
   useEffect(() => {
     setForm({
@@ -47,6 +74,7 @@ export default function InvoiceForm({
           ? initial.items
           : [{ id: 1, description: "", qty: 1, price: 0 }],
     });
+    setPaymentOptions(parsePaymentOptions(initial.payment_details));
   }, [initial]);
 
   const [errors, setErrors] = useState({});
@@ -61,7 +89,6 @@ export default function InvoiceForm({
         setCustomers(await listCustomerOptions());
         return;
       }
-
       const { data } = await supabase
         .from("customers")
         .select("id, name")
@@ -75,6 +102,19 @@ export default function InvoiceForm({
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
+
+  // ── Payment option helpers ──────────────────────────────────────
+  const addPaymentOption = () =>
+    setPaymentOptions((prev) => [...prev, newPaymentOption()]);
+
+  const removePaymentOption = (id) =>
+    setPaymentOptions((prev) => prev.filter((opt) => opt.id !== id));
+
+  const updatePaymentOption = (id, field, value) =>
+    setPaymentOptions((prev) =>
+      prev.map((opt) => (opt.id === id ? { ...opt, [field]: value } : opt)),
+    );
+  // ───────────────────────────────────────────────────────────────
 
   const handleItemChange = (id, field, value) => {
     setForm((prev) => ({
@@ -111,13 +151,15 @@ export default function InvoiceForm({
     return e;
   };
 
-  const lineItemsTotal = useMemo(() => {
-    return form.items.reduce(
-      (sum, item) =>
-        sum + (parseFloat(item.qty) || 0) * (parseFloat(item.price) || 0),
-      0,
-    );
-  }, [form.items]);
+  const lineItemsTotal = useMemo(
+    () =>
+      form.items.reduce(
+        (sum, item) =>
+          sum + (parseFloat(item.qty) || 0) * (parseFloat(item.price) || 0),
+        0,
+      ),
+    [form.items],
+  );
   const workmanshipCost = Number(form.workmanship_cost) || 0;
   const discountPercentage = Math.min(
     100,
@@ -131,11 +173,7 @@ export default function InvoiceForm({
     e.preventDefault();
     try {
       const e2 = validate();
-      if (
-        canCreateLocalCustomer &&
-        customerMode === "new" &&
-        !newCustomerName.trim()
-      ) {
+      if (canCreateLocalCustomer && customerMode === "new" && !newCustomerName.trim()) {
         e2.customer_id = "Customer name is required";
       }
       if (Object.keys(e2).length) {
@@ -153,6 +191,10 @@ export default function InvoiceForm({
         ]);
       }
 
+      // Serialize structured payment options → JSON string for storage
+      const serializedPaymentDetails =
+        paymentOptions.length > 0 ? JSON.stringify(paymentOptions) : "";
+
       await onSubmit({
         ...form,
         customer_id: customerId,
@@ -163,6 +205,7 @@ export default function InvoiceForm({
         net_total: netTotal,
         amount: netTotal,
         type,
+        payment_details: serializedPaymentDetails,
       });
     } catch (error) {
       setErrors((previous) => ({
@@ -256,7 +299,7 @@ export default function InvoiceForm({
           </div>
 
           <div className="space-y-3">
-            {form.items.map((item, i) => (
+            {form.items.map((item) => (
               <div
                 key={item.id}
                 className="group relative flex gap-2 items-start bg-surface border border-surface-border p-3 rounded-xl"
@@ -358,16 +401,116 @@ export default function InvoiceForm({
         {/* ─── Payment Details (Invoice only) ─── */}
         {type === "Invoice" && (
           <div>
-            <p className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">
-              Payment Details
-            </p>
-            <textarea
-              className="w-full rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
-              rows={4}
-              placeholder={"e.g. Bank: GCB Bank Ghana\nAccount Name: Phil's Metal Works\nAccount Number: 1234567890\nPayment Terms: Due within 30 days"}
-              value={form.payment_details ?? ""}
-              onChange={(e) => set("payment_details", e.target.value)}
-            />
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-widest">
+                Payment Details
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-primary text-xs"
+                onClick={addPaymentOption}
+              >
+                <Plus size={14} /> Add Option
+              </Button>
+            </div>
+
+            {paymentOptions.length === 0 && (
+              <p className="text-xs text-text-muted italic text-center py-4 border border-dashed border-surface-border rounded-xl">
+                No payment options added yet. Click "Add Option" to include bank or mobile money details on this invoice.
+              </p>
+            )}
+
+            <div className="space-y-3">
+              {paymentOptions.map((opt, idx) => (
+                <div
+                  key={opt.id}
+                  className="bg-surface border border-surface-border rounded-xl p-4 space-y-3"
+                >
+                  {/* Header row */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-text-muted">
+                      {opt.type === "Mobile Money" ? (
+                        <Smartphone size={14} className="text-primary" />
+                      ) : (
+                        <CreditCard size={14} className="text-primary" />
+                      )}
+                      Option {idx + 1}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removePaymentOption(opt.id)}
+                      className="p-1 text-text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+
+                  {/* Type selector */}
+                  <Select
+                    label="Payment Type"
+                    options={PAYMENT_TYPES}
+                    value={opt.type}
+                    onChange={(e) =>
+                      updatePaymentOption(opt.id, "type", e.target.value)
+                    }
+                  />
+
+                  {/* Mobile Money fields */}
+                  {opt.type === "Mobile Money" && (
+                    <>
+                      <Input
+                        label="Account Name"
+                        placeholder="e.g. John Doe"
+                        value={opt.accountName}
+                        onChange={(e) =>
+                          updatePaymentOption(opt.id, "accountName", e.target.value)
+                        }
+                      />
+                      <Input
+                        label="Mobile Number"
+                        placeholder="e.g. 0551234567"
+                        value={opt.number}
+                        onChange={(e) =>
+                          updatePaymentOption(opt.id, "number", e.target.value)
+                        }
+                      />
+                    </>
+                  )}
+
+                  {/* Bank Account fields */}
+                  {opt.type === "Bank Account" && (
+                    <>
+                      <Input
+                        label="Bank Name"
+                        placeholder="e.g. GCB Bank Ghana"
+                        value={opt.bankName}
+                        onChange={(e) =>
+                          updatePaymentOption(opt.id, "bankName", e.target.value)
+                        }
+                      />
+                      <Input
+                        label="Account Name"
+                        placeholder="e.g. Phil's Metal Works"
+                        value={opt.accountName}
+                        onChange={(e) =>
+                          updatePaymentOption(opt.id, "accountName", e.target.value)
+                        }
+                      />
+                      <Input
+                        label="Account Number"
+                        placeholder="e.g. 1234567890"
+                        value={opt.number}
+                        onChange={(e) =>
+                          updatePaymentOption(opt.id, "number", e.target.value)
+                        }
+                      />
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
