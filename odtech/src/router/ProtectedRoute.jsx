@@ -1,4 +1,5 @@
 import { Navigate } from "react-router-dom";
+import { isMobileApp } from "../lib/platform";
 import useAuthStore from "../store/useAuthStore";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 
@@ -11,6 +12,10 @@ export default function ProtectedRoute({ children }) {
         <LoadingSpinner size="lg" />
       </div>
     )
+  }
+
+  if (isMobileApp) {
+    return children
   }
 
   return session ? children : <Navigate to="/login" replace />

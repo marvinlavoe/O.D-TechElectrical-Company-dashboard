@@ -7,6 +7,7 @@ import {
   Package,
   ShoppingCart,
   Smartphone,
+  ShieldCheck,
   FileText,
   MessageSquare,
   Settings,
@@ -18,16 +19,38 @@ import {
 import useAuthStore from "../../store/useAuthStore";
 import useSidebarStore from "../../store/useSidebarStore";
 import Avatar from "../ui/Avatar";
-import { getDefaultRoute, getUserRole } from "../../lib/authRoutes";
+import splashLogo from "../../assets/phil-logo.png";
+import { isMobileApp } from "../../lib/platform";
+import {
+  getDefaultRoute,
+  getUserRole,
+  userHasModuleAccess,
+} from "../../lib/authRoutes";
 
 const NAV_ITEMS = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", dynamicDashboard: true },
+  {
+    to: "/dashboard",
+    icon: LayoutDashboard,
+    label: "Dashboard",
+    dynamicDashboard: true,
+  },
   { to: "/customers", icon: Users, label: "Customers" },
   { to: "/jobs", icon: Briefcase, label: "Jobs" },
   { to: "/workers", icon: HardHat, label: "Workers", adminOnly: true },
   { to: "/inventory", icon: Package, label: "Inventory", adminOnly: true },
-  { to: "/sales", icon: ShoppingCart, label: "Sales", adminOnly: true },
-  { to: "/merchant-hub", icon: Smartphone, label: "Merchant Hub", adminOnly: true },
+  { to: "/sales", icon: ShoppingCart, label: "Sales", moduleKey: "sales" },
+  {
+    to: "/merchant-hub",
+    icon: Smartphone,
+    label: "Merchant Hub",
+    moduleKey: "merchant_hub",
+  },
+  {
+    to: "/module-access",
+    icon: ShieldCheck,
+    label: "Module Access",
+    adminOnly: true,
+  },
   { to: "/billing", icon: CreditCard, label: "Billing", adminOnly: true },
   { to: "/receipts", icon: FileText, label: "Receipts", adminOnly: true },
   { to: "/reports", icon: FileText, label: "Reports", adminOnly: true },
@@ -35,22 +58,41 @@ const NAV_ITEMS = [
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
+const MOBILE_NAV_ITEMS = [
+  { to: "/billing", icon: CreditCard, label: "Invoices" },
+  { to: "/customers", icon: Users, label: "Customers" },
+  { to: "/receipts", icon: FileText, label: "Receipts" },
+  { to: "/inventory", icon: Package, label: "Inventory" },
+];
+
 export default function Sidebar() {
-  const { session, profile, logout } = useAuthStore();
+  const { session, profile, moduleAccess, logout } = useAuthStore();
   const navigate = useNavigate();
   const { isCollapsed, isMobileOpen, closeMobile } = useSidebarStore();
 
   const role = getUserRole(profile, session?.user);
   const isAdmin = role === "admin";
-  const dashboardRoute = getDefaultRoute(profile, session?.user);
+  const dashboardRoute = getDefaultRoute(profile, session?.user, moduleAccess);
 
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
 
-  const visible = NAV_ITEMS
-    .filter((item) => !item.adminOnly || isAdmin)
+  const visible = (isMobileApp ? MOBILE_NAV_ITEMS : NAV_ITEMS)
+    .filter((item) => {
+      if (item.adminOnly && !isAdmin) return false;
+      if (item.moduleKey) {
+        return userHasModuleAccess(
+          item.moduleKey,
+          profile,
+          session?.user,
+          moduleAccess,
+        );
+      }
+
+      return true;
+    })
     .map((item) => ({
       ...item,
       to: item.dynamicDashboard ? dashboardRoute : item.to,
@@ -88,12 +130,16 @@ export default function Sidebar() {
           }`}
         >
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <Zap size={18} className="text-primary" />
+            <img
+              src={splashLogo}
+              alt="Phil's Metal Works"
+              className="h-8 w-8 rounded-lg object-cover"
+            />
           </div>
           {!isCollapsed && (
             <div>
               <p className="text-sm font-bold leading-none text-text-primary">
-                O.D DASHBOARD
+                Phil's Metal Works
               </p>
               <p className="mt-0.5 text-xs capitalize text-text-muted">
                 {role}
@@ -133,14 +179,20 @@ export default function Sidebar() {
             }`}
           >
             <Avatar
-              name={profile?.full_name || session?.user?.email || "User"}
+              name={
+                profile?.full_name ||
+                session?.user?.email ||
+                "Phil's Metal Works"
+              }
               src={profile?.avatar_url}
               size="sm"
             />
             {!isCollapsed && (
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-text-primary">
-                  {profile?.full_name || session?.user?.email || "User"}
+                  {profile?.full_name ||
+                    session?.user?.email ||
+                    "Phil's Metal Works"}
                 </p>
                 <p className="truncate text-xs text-text-muted">
                   {profile?.specialization || role}

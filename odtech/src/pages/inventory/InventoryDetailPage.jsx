@@ -19,6 +19,8 @@ import Button from '../../components/ui/Button'
 import Drawer from '../../components/ui/Drawer'
 import InventoryForm from './InventoryForm'
 import { formatCurrency } from '../../lib/utils'
+import { isMobileApp } from '../../lib/platform'
+import { getInventoryItem, updateInventoryItem } from '../../repositories/inventoryRepository'
 
 function SectionCard({ title, action, children }) {
   return (
@@ -57,6 +59,13 @@ export default function InventoryDetailPage() {
   const fetchItemData = async () => {
     setLoading(true)
     try {
+      if (isMobileApp) {
+        const localItem = await getInventoryItem(id)
+        if (!localItem) throw new Error('Inventory item not found')
+        setItem(localItem)
+        return
+      }
+
       const { data, error } = await supabase
         .from('inventory')
         .select('*')
@@ -77,6 +86,13 @@ export default function InventoryDetailPage() {
     queueMicrotask(async () => {
       setLoading(true)
       try {
+        if (isMobileApp) {
+          const localItem = await getInventoryItem(id)
+          if (!localItem) throw new Error('Inventory item not found')
+          setItem(localItem)
+          return
+        }
+
         const { data, error } = await supabase
           .from('inventory')
           .select('*')
@@ -96,6 +112,25 @@ export default function InventoryDetailPage() {
 
   const handleEdit = async (form) => {
     const status = parseInt(form.qty, 10) <= parseInt(form.threshold, 10) ? 'Low Stock' : 'In Stock'
+
+    if (isMobileApp) {
+      try {
+        const updatedItem = await updateInventoryItem(id, {
+          ...form,
+          qty: parseInt(form.qty, 10),
+          threshold: parseInt(form.threshold, 10),
+          cost: form.cost ? parseFloat(form.cost) : 0,
+          selling_price: form.selling_price ? parseFloat(form.selling_price) : 0,
+          status,
+        })
+        setItem((previous) => ({ ...previous, ...updatedItem }))
+        toast.success('Item updated')
+        setEditOpen(false)
+      } catch (error) {
+        toast.error(error.message || 'Failed to update item')
+      }
+      return
+    }
 
     const { error } = await supabase
       .from('inventory')

@@ -4,17 +4,17 @@ import { supabase } from "../../lib/supabase";
 import toast from "react-hot-toast";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
-import Select from "../../components/ui/Select";
 import { getDefaultRoute } from "../../lib/authRoutes";
+import useAuthStore from "../../store/useAuthStore";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState("admin");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const fetchModuleAccess = useAuthStore((state) => state.fetchModuleAccess);
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -37,7 +37,6 @@ export default function SignupPage() {
         options: {
           data: {
             full_name: fullName,
-            role,
           },
         },
       });
@@ -65,12 +64,21 @@ export default function SignupPage() {
         return;
       }
 
+      const normalizedEmail = email.trim().toLowerCase();
+      const { data: accessGrant } = await supabase
+        .from("module_access_grants")
+        .select("role")
+        .eq("email", normalizedEmail)
+        .eq("is_active", true)
+        .maybeSingle();
+      const role = accessGrant?.role || "worker";
+
       // 3. Create profile (SAFE with upsert)
       const { error: profileError } = await supabase.from("profiles").upsert({
         id: user.id,
         full_name: fullName,
-        email: email,
-        role: role,
+        email: normalizedEmail,
+        role,
       });
 
       if (profileError) {
@@ -80,8 +88,10 @@ export default function SignupPage() {
         return;
       }
 
+      const moduleAccess = await fetchModuleAccess(normalizedEmail, { role }, user);
+
       toast.success("Account created successfully!");
-      navigate(getDefaultRoute({ role }, user), { replace: true });
+      navigate(getDefaultRoute({ role }, user, moduleAccess), { replace: true });
     } catch (err) {
       console.error("Signup exception:", err);
       toast.error("Something went wrong.");
@@ -124,16 +134,6 @@ export default function SignupPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-        />
-
-        <Select
-          label="Role"
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          options={[
-            { value: "admin", label: "Admin" },
-            { value: "worker", label: "Worker" },
-          ]}
         />
 
         <Button

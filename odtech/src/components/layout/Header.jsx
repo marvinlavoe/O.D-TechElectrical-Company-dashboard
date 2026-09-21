@@ -7,6 +7,8 @@ import useAuthStore from "../../store/useAuthStore";
 import { supabase } from "../../lib/supabase";
 import Button from "../ui/Button";
 import Badge from "../ui/Badge";
+import { Capacitor } from "@capacitor/core";
+import splashLogo from "../../assets/phil-logo.png";
 
 const PAGE_TITLES = {
   "/dashboard": "Dashboard",
@@ -14,8 +16,10 @@ const PAGE_TITLES = {
   "/jobs": "Jobs & Scheduling",
   "/workers": "Workforce",
   "/inventory": "Inventory",
+  "/receipts": "Receipts",
   "/sales": "Sales",
   "/merchant-hub": "Merchant Hub",
+  "/module-access": "Module Access",
   "/billing": "Billing & Quotations",
   "/reports": "Reports & Analytics",
   "/chat": "Messages",
@@ -64,9 +68,11 @@ export default function Header() {
   const title =
     Object.entries(PAGE_TITLES).find(([path]) =>
       location.pathname.startsWith(path),
-    )?.[1] ?? "O.D DASHBOARD";
+    )?.[1] ?? "Phil's Metal Works";
 
   useEffect(() => {
+    if (Capacitor.isNativePlatform()) return undefined;
+
     queueMicrotask(() => {
       fetchNotifications(profile, currentUser).catch(() => {});
     });
@@ -79,6 +85,8 @@ export default function Header() {
   }, [currentUser, fetchNotifications, profile]);
 
   useEffect(() => {
+    if (Capacitor.isNativePlatform()) return undefined;
+
     if (!currentUserId) {
       return undefined;
     }
@@ -163,7 +171,10 @@ export default function Header() {
         >
           <Menu size={20} className="text-text-secondary" />
         </button>
-        <h1 className="max-w-[42vw] truncate text-sm font-semibold text-text-primary sm:max-w-none sm:text-base">{title}</h1>
+        <div className="flex min-w-0 items-center gap-2">
+          <img src={splashLogo} alt="" className="h-7 w-7 rounded-md object-cover" />
+          <h1 className="max-w-[42vw] truncate text-sm font-semibold text-text-primary sm:max-w-none sm:text-base">{title}</h1>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
@@ -180,7 +191,7 @@ export default function Header() {
           />
         </div>
 
-        <div className="relative" ref={bellRef}>
+        {!Capacitor.isNativePlatform() && <div className="relative" ref={bellRef}>
           <button
             onClick={togglePanel}
             className="relative p-2 rounded-lg hover:bg-surface transition-colors"
@@ -271,7 +282,7 @@ export default function Header() {
               </div>
             </div>
           )}
-        </div>
+        </div>}
       </div>
     </header>
   );

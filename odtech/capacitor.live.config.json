@@ -1,0 +1,13 @@
+{
+  "appId": "com.odtech.mobile",
+  "appName": "Phils Metal Works",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "http://192.168.0.192:5173",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

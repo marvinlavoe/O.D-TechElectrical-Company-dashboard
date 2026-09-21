@@ -3,7 +3,12 @@ import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import { supabase } from "./lib/supabase";
-import { applySystemPreferences, readStoredSystemPreferences } from "./lib/settings";
+import { initializeDatabase } from "./db/sqlite";
+import { isMobileApp } from "./lib/platform";
+import {
+  applySystemPreferences,
+  readStoredSystemPreferences,
+} from "./lib/settings";
 import useAuthStore from "./store/useAuthStore";
 import Router from "./router";
 import "./index.css";
@@ -20,38 +25,52 @@ async function syncAuthState(session) {
   store.setSession(session);
 
   if (session?.user) {
-    await store.fetchProfile(session.user.id);
+    const profile = await store.fetchProfile(session.user.id);
+    await store.fetchModuleAccess(session.user.email, profile, session.user);
   } else {
     store.setProfile(null);
+    store.setModuleAccess([]);
   }
 
   store.setLoading(false);
 }
 
-supabase.auth.onAuthStateChange(async (_event, session) => {
-  try {
-    await syncAuthState(session);
-  } catch (error) {
-    console.error("Auth state sync failed:", error);
+async function initializeApp() {
+  if (isMobileApp) {
+    await initializeDatabase();
     const store = useAuthStore.getState();
-    store.setProfile(null);
+    store.setSession({ user: { email: "local@device" } });
+    store.setProfile({ full_name: "Local user", role: "admin" });
+    store.setModuleAccess([]);
     store.setLoading(false);
+    return;
   }
-});
 
-supabase.auth
-  .getSession()
-  .then(async ({ data, error }) => {
-    if (error) throw error;
-    await syncAuthState(data?.session ?? null);
-  })
-  .catch((error) => {
-    console.error("Initial session load failed:", error);
-    const store = useAuthStore.getState();
-    store.setSession(null);
-    store.setProfile(null);
-    store.setLoading(false);
+  supabase.auth.onAuthStateChange((_event, session) => {
+    setTimeout(() => {
+      syncAuthState(session).catch((error) => {
+        console.error("Auth state sync failed:", error);
+        const store = useAuthStore.getState();
+        store.setProfile(null);
+        store.setModuleAccess([]);
+        store.setLoading(false);
+      });
+    }, 0);
   });
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  await syncAuthState(data?.session ?? null);
+}
+
+initializeApp().catch((error) => {
+  console.error("Initial app load failed:", error);
+  const store = useAuthStore.getState();
+  store.setSession(null);
+  store.setProfile(null);
+  store.setModuleAccess([]);
+  store.setLoading(false);
+});
 
 applySystemPreferences(readStoredSystemPreferences());
 
